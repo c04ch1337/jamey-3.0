@@ -147,6 +147,37 @@ git ls-files | grep -E "(cache|target|node_modules)"
 
 ✅ Git index should be clean now
 
+## CRITICAL: Why `git add -A -- .` Fails
+
+**The issue**: When you run `git add -A -- .` from within `jamey-3.0`, Git can incorrectly try to add files from outside the repository, including:
+- `.config/Cursor/...` (Cursor IDE cache that may exist in parent directories)
+- `.nvm/` (Node Version Manager)
+- `Agents/...` (other projects)
+
+**Why this happens**: The `-A` flag with `-- .` can cause Git to misinterpret paths, especially when there are embedded git repositories or when paths are resolved unexpectedly.
+
+### Safe Git Commands
+
+**❌ NEVER USE**: `git add -A -- .`  
+**❌ NEVER USE**: `git add -A` (without specifying directory)
+
+**✅ ALWAYS USE ONE OF THESE**:
+
+**Option 1: Use the safe script (Recommended)**
+```bash
+./scripts/git-add-safe.sh
+```
+
+**Option 2: Use `git add .` (without `-A`)**
+```bash
+git add .
+```
+
+**Option 3: Add specific files**
+```bash
+git add path/to/file1 path/to/file2
+```
+
 ## Next Steps
 
 1. **Review staged files**:

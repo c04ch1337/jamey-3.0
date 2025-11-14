@@ -67,12 +67,10 @@ frontend/node_modules/.cache/
 .tsbuildinfo
 
 # Cursor IDE configuration and cache (embedded git repos)
-.config/
-.config/**
-.config/Cursor/
-.config/Cursor/**
-
 # Other embedded git repositories that might be in parent directory
 .nvm/
-Agents/
 **/checkpoints/
+
+# Ignore all .config and Agents directories, wherever they may be.
+**/.config/
+**/Agents/
