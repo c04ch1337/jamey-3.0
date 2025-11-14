@@ -46,3 +46,33 @@ logs/
 # Tantivy indices
 data/memory/
 
+# Rust incremental compilation cache
+**/incremental/
+**/*.rlib
+**/*.rmeta
+**/*.pdb
+
+# Cache files
+*.cache
+**/*.cache
+.cache/
+**/.cache/
+
+# Vite cache
+frontend/.vite/
+frontend/node_modules/.cache/
+
+# TypeScript cache
+*.tsbuildinfo
+.tsbuildinfo
+
+# Cursor IDE configuration and cache (embedded git repos)
+.config/
+.config/**
+.config/Cursor/
+.config/Cursor/**
+
+# Other embedded git repositories that might be in parent directory
+.nvm/
+Agents/
+**/checkpoints/
