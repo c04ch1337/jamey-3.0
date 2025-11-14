@@ -1,0 +1,48 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+frontend/node_modules/
+package-lock.json
+frontend/package-lock.json
+yarn.lock
+frontend/yarn.lock
+
+# Build outputs
+/dist/
+/frontend/dist/
+/build/
+
+# Database and data files
+/data/
+*.db
+*.sqlite
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Tantivy indices
+data/memory/
+

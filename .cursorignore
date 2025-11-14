@@ -1,0 +1,35 @@
+# Build artifacts
+/target/
+/target/**/*
+*.rs.bk
+/build/
+/dist/
+
+# Dependencies
+/node_modules/
+/frontend/node_modules/
+
+# Database and data files
+/data/
+*.db
+*.sqlite
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

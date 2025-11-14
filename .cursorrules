@@ -1,0 +1,55 @@
+# JAMEY 3.0 - Project Rules
+
+## TECH STACK
+- Backend: Rust, Tokio, Axum, SQLx
+- Frontend: React 18, TypeScript, Vite, TanStack Query
+- AI: Conscience Engine, 5-Layer Memory System
+- Database: SQLite with SQLx
+- Real-time: MQTT async client
+
+## ARCHITECTURE PATTERNS
+- Use async/await throughout Rust code
+- Axum web framework with Tower middleware
+- 5-layer memory system: short_term, long_term, working, episodic, semantic
+- Moral rule-based conscience engine with weighted scoring
+- React hooks with TanStack Query for state management
+
+## CODE STANDARDS
+
+### Rust
+- Follow Rust 2021 edition conventions
+- Use `anyhow` or `thiserror` for error handling (to be added)
+- Prefer functional patterns where appropriate
+- Use `tracing` for logging instead of `println!`
+- Structure modules with clear separation: conscience, memory, agents
+
+### TypeScript/React
+- Strict TypeScript enabled
+- Functional components with hooks
+- Use TanStack Query for server state
+- Zod for runtime validation
+- Axios for HTTP requests
+
+## MEMORY SYSTEM RULES
+- Five distinct memory layers with Tantivy indexing
+- Short-term: Immediate actions and evaluations
+- Long-term: Persistent moral learnings
+- Working: Current context and reasoning
+- Episodic: Event sequences and experiences
+- Semantic: Conceptual knowledge and rules
+
+## CONSCIENCE ENGINE
+- Moral rules have weights (f32) and descriptions
+- Evaluation scans action text for rule matches
+- Default rules: "no-harm" (weight: 10.0), "truth" (weight: 8.0)
+- Rules stored in thread-safe DashMap
+
+## API ENDPOINTS
+- GET / : Health check
+- POST /evaluate : Evaluate action morality (returns f32 score)
+
+## PROJECT STRUCTURE
+- Backend: Rust binary in src/
+- Frontend: React app in frontend/
+- Data: SQLite DB and memory indices in data/
+- Shared types and logic in src/lib.rs
