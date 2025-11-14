@@ -9,7 +9,8 @@ Jamey 3.0 is the digital mirror and guardian system, part of the Eternal Hive ar
 - **AI**: Conscience Engine with weighted moral rules
 - **Memory**: 5-Layer Memory System (Short-term, Long-term, Working, Episodic, Semantic)
 - **Database**: SQLite with SQLx
-- **Real-time**: MQTT async client (to be implemented)
+- **Real-time**: MQTT async client with authentication and pub/sub capabilities
+- **Soul KB**: Emoji-based emotion tracking with trust scoring (Phase 4.6)
 
 ## Project Structure
 
@@ -129,6 +130,70 @@ The 5-Layer Memory System stores memories in separate Tantivy indices:
 4. **Episodic**: Event sequences and experiences
 5. **Semantic**: Conceptual knowledge and rules
 
+## Soul Knowledge Base (Phase 4.6)
+
+The Soul KB tracks entities with emotion-based trust scoring, empathy calculation, and automatic trust decay over time.
+
+### Emotion System
+
+Five core emotions with emoji representation and scoring:
+- 😍 **Love** (1.0) - Highest empathy, slows trust decay
+- 😊 **Joy** (0.8) - Positive interaction
+- 😐 **Neutral** (0.5) - Balanced interaction
+- 😢 **Sadness** (0.2) - Negative interaction
+- 😡 **Anger** (0.1) - Lowest empathy, accelerates trust decay
+
+### Trust & Empathy
+
+- **Trust Score**: 0.0 to 1.0, starts at 0.5 by default
+- **Empathy Score**: Weighted average of recorded emotions
+- **Trust Boost**: High empathy (>0.7) increases trust and slows decay
+- **Trust Decay**: Time-based decay, rate adjusted by empathy level
+- **Memory Links**: Connect memories to entities for context
+
+### CLI Commands
+
+```bash
+# Add or update entity with trust score
+jamey-cli soul upsert alice 0.7
+
+# Record emotion (text or emoji)
+jamey-cli soul record alice joy
+jamey-cli soul record alice 😊
+
+# Show entity status with emoji
+jamey-cli soul status alice
+
+# Show all entities
+jamey-cli soul status
+
+# Apply time-based trust decay
+jamey-cli soul decay
+
+# Delete entity
+jamey-cli soul delete bob
+```
+
+### Configuration
+
+Configure in `.env`:
+```bash
+SOUL_DEFAULT_TRUST=0.5
+SOUL_BASE_DECAY_RATE=0.01
+SOUL_PRUNE_THRESHOLD=0.1
+SOUL_EMPATHY_THRESHOLD=0.7
+SOUL_AUTO_RECORD=true
+```
+
+### Integration
+
+The soul KB integrates with:
+- **Conscience Engine**: Automatically records emotions based on moral evaluation scores
+- **Memory System**: Links memories to entities for personalized context
+- **Configuration**: Fully configurable trust and decay parameters
+
+For detailed architecture, see [`docs/phase_4_6_architecture.md`](docs/phase_4_6_architecture.md).
+
 ## Conscience Engine
 
 The Conscience Engine evaluates actions against weighted moral rules. Default rules include:
@@ -157,6 +222,15 @@ Frontend:
 cd frontend
 npm run build
 ```
+
+## Documentation
+
+- **TEMPLATE.md** - Comprehensive codebase template and reference
+- **docs/architecture.md** - System architecture details
+- **docs/mqtt_architecture.md** - MQTT system architecture and design
+- **docs/MQTT_USAGE.md** - MQTT client usage and configuration guide
+- **docs/setup/** - Setup and configuration guides
+- `docs/phase_4_6_architecture.md` - Soul KB and emoji emotion system design
 
 ## License
 
