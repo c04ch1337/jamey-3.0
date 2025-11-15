@@ -30,8 +30,8 @@ docker-compose up
 
 This will build the necessary Docker images and start the following services:
 
-*   `backend`: The Rust backend, accessible at `http://localhost:8080`.
-*   `frontend`: The React frontend, accessible at `http://localhost:80`.
+*   `backend`: The Rust backend, accessible at `http://localhost:3000`.
+*   `frontend`: The React frontend, accessible at `http://localhost:5173` (or the port specified by `FRONTEND_PORT`).
 *   `db`: A PostgreSQL database instance.
 
 Live reloading is enabled for both the frontend and backend, so any changes to the source code will trigger an automatic rebuild and restart of the corresponding service.

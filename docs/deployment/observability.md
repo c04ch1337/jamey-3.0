@@ -25,7 +25,7 @@ docker-compose up -d
 
 Once the services are running, you can access them at the following URLs:
 
-- **Grafana**: [http://localhost:3000](http://localhost:3000)
+- **Grafana**: [http://localhost:3001](http://localhost:3001)
   - **Login**: `admin` / `admin`
 - **Jaeger UI**: [http://localhost:16686](http://localhost:16686)
 - **Prometheus UI**: [http://localhost:9090](http://localhost:9090)
@@ -37,7 +37,7 @@ Once the services are running, you can access them at the following URLs:
 
 Grafana is pre-configured with a "Jamey 3.0 Overview" dashboard. To access it:
 
-1.  Navigate to [http://localhost:3000](http://localhost:3000).
+1.  Navigate to [http://localhost:3001](http://localhost:3001).
 2.  Log in with the default credentials (`admin`/`admin`).
 3.  On the left-hand menu, go to **Dashboards**.
 4.  Click on the **Jamey 3.0 Overview** dashboard.
