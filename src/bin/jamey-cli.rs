@@ -6,6 +6,7 @@ use jamey_3::conscience::ConscienceEngine;
 use jamey_3::db;
 use jamey_3::memory::MemorySystem;
 use jamey_3::soul::{Emotion, SoulEntity, SoulStorage};
+use reqwest;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
@@ -21,8 +22,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Interactive chat with Jamey
+    /// Interactive chat with Jamey (standalone mode)
     Chat,
+    
+    /// Connect to a running backend and chat via API (SSH-like)
+    Connect {
+        /// Backend API URL
+        #[arg(long, default_value = "http://localhost:3000")]
+        url: String,
+        
+        /// API key for authentication (optional)
+        #[arg(long)]
+        api_key: Option<String>,
+    },
     
     /// Soul knowledge base commands
     #[command(subcommand)]
@@ -75,6 +87,9 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Chat => {
             run_chat().await?;
+        }
+        Commands::Connect { url, api_key } => {
+            run_connect(&url, api_key.as_deref()).await?;
         }
         Commands::Soul(soul_cmd) => {
             handle_soul_command(soul_cmd).await?;
@@ -136,6 +151,173 @@ async fn run_chat() -> Result<()> {
     cli.run().await?;
 
     Ok(())
+}
+
+async fn run_connect(backend_url: &str, api_key: Option<&str>) -> Result<()> {
+    use std::io::{self, Write};
+    
+    println!("\n🔌 Connecting to Jamey 3.0 Backend...");
+    println!("   URL: {}", backend_url);
+    
+    // Check if backend is running
+    let client = reqwest::Client::new();
+    let health_url = format!("{}/health", backend_url);
+    
+    let response = match client.get(&health_url).send().await {
+        Ok(resp) => resp,
+        Err(e) => {
+            eprintln!("\n❌ Cannot connect to backend at {}: {}", backend_url, e);
+            eprintln!("\n💡 Make sure the backend is running:");
+            eprintln!("   ./scripts/run.sh");
+            eprintln!("   or");
+            eprintln!("   cargo run\n");
+            return Err(anyhow::anyhow!("Backend not available"));
+        }
+    };
+    
+    if !response.status().is_success() {
+        eprintln!("\n❌ Backend returned error: {}", response.status());
+        return Err(anyhow::anyhow!("Backend error"));
+    }
+    
+    println!("✅ Connected to backend!");
+    println!("\n╔═══════════════════════════════════════════════════════════╗");
+    println!("║     Jamey 3.0 - Connected Mode - CLI Chat                ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
+    println!("Type your message and press Enter.");
+    println!("Commands: /help, /exit, /clear, /rules\n");
+    
+    loop {
+        print!("You: ");
+        io::stdout().flush()?;
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_string();
+        
+        if input.is_empty() {
+            continue;
+        }
+        
+        // Handle commands
+        if input.starts_with('/') {
+            match handle_connect_command(&input, &client, backend_url, api_key).await {
+                Ok(should_exit) => {
+                    if should_exit {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                }
+            }
+            continue;
+        }
+        
+        // Send message to backend via /evaluate endpoint
+        let mut request = client
+            .post(&format!("{}/evaluate", backend_url))
+            .json(&serde_json::json!({
+                "action": input
+            }));
+        
+        if let Some(key) = api_key {
+            request = request.header("x-api-key", key);
+        }
+        
+        match request.send().await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    match resp.json::<serde_json::Value>().await {
+                        Ok(data) => {
+                            let score = data.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+                            let action = data.get("action").and_then(|a| a.as_str()).unwrap_or("");
+                            println!("\n⚖️  Conscience Evaluation: {:.2}", score);
+                            println!("   Action: {}\n", action);
+                        }
+                        Err(e) => {
+                            eprintln!("\n❌ Error parsing response: {}\n", e);
+                        }
+                    }
+                } else {
+                    eprintln!("\n❌ Backend error: {}\n", resp.status());
+                }
+            }
+            Err(e) => {
+                eprintln!("\n❌ Request failed: {}\n", e);
+            }
+        }
+    }
+    
+    println!("\n👋 Disconnected from backend. Goodbye!\n");
+    Ok(())
+}
+
+async fn handle_connect_command(
+    cmd: &str,
+    client: &reqwest::Client,
+    backend_url: &str,
+    api_key: Option<&str>,
+) -> Result<bool> {
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    let command = parts[0];
+    
+    match command {
+        "/help" | "/h" => {
+            println!("\n📖 Available Commands:");
+            println!("  /help, /h          - Show this help message");
+            println!("  /exit, /quit, /q   - Disconnect and exit");
+            println!("  /clear             - Clear conversation history");
+            println!("  /rules             - Show all moral rules from backend");
+            println!();
+        }
+        "/exit" | "/quit" | "/q" => {
+            return Ok(true);
+        }
+        "/clear" => {
+            println!("\n✅ Conversation history cleared.\n");
+        }
+        "/rules" => {
+            let mut request = client.get(&format!("{}/rules", backend_url));
+            
+            if let Some(key) = api_key {
+                request = request.header("x-api-key", key);
+            }
+            
+            match request.send().await {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        match resp.json::<Vec<serde_json::Value>>().await {
+                            Ok(rules) => {
+                                println!("\n📜 Moral Rules from Backend:");
+                                for rule in rules {
+                                    let name = rule.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                                    let desc = rule.get("description").and_then(|d| d.as_str()).unwrap_or("");
+                                    let weight = rule.get("weight").and_then(|w| w.as_f64()).unwrap_or(0.0);
+                                    println!("  • {} (weight: {:.1})", name, weight);
+                                    println!("    {}", desc);
+                                }
+                                println!();
+                            }
+                            Err(e) => {
+                                eprintln!("\n❌ Error parsing rules: {}\n", e);
+                            }
+                        }
+                    } else {
+                        eprintln!("\n❌ Backend error: {}\n", resp.status());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("\n❌ Request failed: {}\n", e);
+                }
+            }
+        }
+        _ => {
+            println!("\n❓ Unknown command: {}. Type /help for available commands.\n", command);
+        }
+    }
+    
+    Ok(false)
 }
 
 async fn handle_soul_command(cmd: SoulCommands) -> Result<()> {

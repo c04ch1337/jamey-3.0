@@ -97,10 +97,50 @@ The server will start on `http://localhost:3000`
 
 ### CLI Chat Interface
 
-Start an interactive chat with Jamey 3.0:
+**Easiest Way - Start Backend + CLI Together:**
+
+**Linux/Mac:**
+```bash
+./scripts/start-with-cli.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\start-with-cli.ps1
+```
+
+This starts the backend in the background and launches the CLI automatically.
+
+**Connect to Running Backend (SSH-like):**
+
+If you already have a backend running:
+
+**Linux/Mac:**
+```bash
+./scripts/connect.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\connect.ps1
+```
+
+Or manually:
+```bash
+cargo run --bin jamey-cli connect
+```
+
+Connect to remote backend:
+```bash
+cargo run --bin jamey-cli connect --url http://remote-server:3000 --api-key jamey_your-key
+```
+
+**Standalone CLI (Direct LLM Access):**
+
+Run CLI without backend (uses OpenRouter directly):
 
 ```bash
-cargo run --bin jamey-cli
+cargo run --bin jamey-cli chat
 ```
 
 Or use the helper script:
@@ -108,15 +148,17 @@ Or use the helper script:
 ./scripts/chat.sh
 ```
 
-**Note**: The CLI requires your OpenRouter API key to be set in `.env` file.
+**Note**: Standalone chat mode requires your OpenRouter API key to be set in `.env` file.
 
 **CLI Commands:**
 - `/help` - Show available commands
 - `/exit` or `/quit` - Exit the chat
 - `/clear` - Clear conversation history
 - `/rules` - Show all moral rules
-- `/memory` - Show recent memories
-- `/conscience <text>` - Evaluate text with conscience engine
+- `/memory` - Show recent memories (standalone mode only)
+- `/conscience <text>` - Evaluate text with conscience engine (standalone mode only)
+
+**See [CLI Usage Guide](docs/CLI_USAGE.md) for complete documentation.**
 
 ### Frontend Setup
 
