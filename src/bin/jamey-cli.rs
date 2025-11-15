@@ -6,6 +6,7 @@ use jamey_3::conscience::ConscienceEngine;
 use jamey_3::db;
 use jamey_3::memory::MemorySystem;
 use jamey_3::soul::{Emotion, SoulEntity, SoulStorage};
+use jamey_3::soul::emotion::EmotionType;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
@@ -185,13 +186,31 @@ async fn soul_upsert(storage: &SoulStorage, entity_name: &str, trust: f32) -> Re
 }
 
 async fn soul_record(storage: &SoulStorage, entity_name: &str, emotion_str: &str) -> Result<()> {
-    let emotion = Emotion::from_str(emotion_str)
-        .ok_or_else(|| anyhow::anyhow!("Invalid emotion: {}. Use: joy, sad, angry, neutral, or love", emotion_str))?;
+    let emotion_type = match emotion_str.to_lowercase().as_str() {
+        "joy" => EmotionType::Joy,
+        "love" => EmotionType::PaternalLove,
+        "protect" => EmotionType::ProtectiveConcern,
+        "pride" => EmotionType::Pride,
+        "worry" => EmotionType::Worry,
+        "calm" => EmotionType::Calm,
+        "focus" => EmotionType::Focus,
+        _ => EmotionType::General(emotion_str.to_string()),
+    };
+    
+    let emotion = Emotion {
+        id: uuid::Uuid::new_v4(),
+        emotion_type,
+        intensity: 0.8,
+        target: None,
+        timestamp: chrono::Utc::now(),
+        duration: 0.0,
+    };
     
     let mut entity = storage.get_entity(entity_name)
         .await?
         .unwrap_or_else(|| SoulEntity::new(entity_name.to_string()));
     
+    let emotion_type = emotion.emotion_type.clone();
     entity.record_emotion(emotion);
     
     // Update empathy and trust
@@ -199,7 +218,7 @@ async fn soul_record(storage: &SoulStorage, entity_name: &str, emotion_str: &str
     
     storage.upsert_entity(&entity).await?;
     
-    println!("\n{} Recorded {} for '{}'", emotion.emoji(), emotion.name(), entity_name);
+    println!("\n{} Recorded {} for '{}'", emotion_type.emoji(), emotion_type.name(), entity_name);
     println!("   Updated Trust: {:.2}", entity.trust_score);
     println!("   Empathy: {:.2}\n", entity.empathy_score());
     

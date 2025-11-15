@@ -35,6 +35,18 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Thread-safe collections
 dashmap = "5.5"
 
+# Neural computation and parallel processing
+ndarray = { version = "0.15", features = ["rayon", "serde"] }
+rayon = "1.8"
+
+# Compression
+lz4 = "1.24"
+
+# Metrics and monitoring
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+tokio-tungstenite = "0.20"
+
 # MQTT
 rumqttc = { version = "0.24", features = ["use-rustls"] }
 rustls = "0.23"

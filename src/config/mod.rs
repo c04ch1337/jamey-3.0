@@ -57,6 +57,115 @@ impl SoulConfig {
     }
 }
 
+/// Consciousness System configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsciousnessConfig {
+    /// Competition threshold for global workspace broadcast (0.0 to 1.0)
+    pub competition_threshold: f64,
+    /// Broadcast channel size for workspace
+    pub broadcast_channel_size: usize,
+    /// Broadcast factor for activity level calculation
+    pub broadcast_factor: f64,
+    /// Competition divisor for activity level calculation
+    pub competition_divisor: f64,
+    /// Maximum competition factor for activity level
+    pub competition_max_factor: f64,
+    /// Maximum content length for priority calculation
+    pub priority_max_length: f64,
+    /// Φ threshold for consciousness check (0.0 to 1.0)
+    pub phi_threshold: f64,
+    /// Epsilon value for Φ calculations
+    pub phi_epsilon: f64,
+    /// Maximum content length for feature extraction
+    pub feature_max_length: f64,
+    /// Maximum word count for feature extraction
+    pub feature_max_words: f64,
+    /// Whether to enable higher-order thought processing
+    pub enable_higher_order: bool,
+    pub enable_predictive: bool,
+    pub enable_attention: bool,
+}
+
+impl Default for ConsciousnessConfig {
+    fn default() -> Self {
+        Self {
+            competition_threshold: 0.7,
+            broadcast_channel_size: 100,
+            broadcast_factor: 0.5,
+            competition_divisor: 10.0,
+            competition_max_factor: 0.5,
+            priority_max_length: 100.0,
+            phi_threshold: 0.85,
+            phi_epsilon: 1e-6,
+            feature_max_length: 100.0,
+            feature_max_words: 50.0,
+            enable_higher_order: true,
+            enable_predictive: true,
+            enable_attention: true,
+        }
+    }
+}
+
+impl ConsciousnessConfig {
+    /// Load consciousness configuration from environment variables
+    pub fn from_env() -> Self {
+        Self {
+            competition_threshold: env::var("CONSCIOUSNESS_COMPETITION_THRESHOLD")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.7),
+            broadcast_channel_size: env::var("CONSCIOUSNESS_BROADCAST_CHANNEL_SIZE")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100),
+            broadcast_factor: env::var("CONSCIOUSNESS_BROADCAST_FACTOR")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.5),
+            competition_divisor: env::var("CONSCIOUSNESS_COMPETITION_DIVISOR")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10.0),
+            competition_max_factor: env::var("CONSCIOUSNESS_COMPETITION_MAX_FACTOR")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.5),
+            priority_max_length: env::var("CONSCIOUSNESS_PRIORITY_MAX_LENGTH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100.0),
+            phi_threshold: env::var("CONSCIOUSNESS_PHI_THRESHOLD")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.85),
+            phi_epsilon: env::var("CONSCIOUSNESS_PHI_EPSILON")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1e-6),
+            feature_max_length: env::var("CONSCIOUSNESS_FEATURE_MAX_LENGTH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100.0),
+            feature_max_words: env::var("CONSCIOUSNESS_FEATURE_MAX_WORDS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(50.0),
+            enable_higher_order: env::var("CONSCIOUSNESS_ENABLE_HIGHER_ORDER")
+                .ok()
+                .map(|v| v == "true")
+                .unwrap_or(true),
+            enable_predictive: env::var("CONSCIOUSNESS_ENABLE_PREDICTIVE")
+                .ok()
+                .map(|v| v == "true")
+                .unwrap_or(true),
+            enable_attention: env::var("CONSCIOUSNESS_ENABLE_ATTENTION")
+                .ok()
+                .map(|v| v == "true")
+                .unwrap_or(true),
+        }
+    }
+}
+
 /// Application configuration loaded from environment variables
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -66,6 +175,7 @@ pub struct Config {
     pub database_url: Option<String>,
     pub mqtt: Option<MqttConfig>,
     pub soul: SoulConfig,
+    pub consciousness: ConsciousnessConfig,
 }
 
 impl Config {
@@ -106,6 +216,7 @@ impl Config {
             database_url,
             mqtt,
             soul: SoulConfig::from_env(),
+            consciousness: ConsciousnessConfig::from_env(),
         }))
     }
 
@@ -125,6 +236,35 @@ impl Config {
             anyhow::bail!("OPENROUTER_MODEL cannot be empty");
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_consciousness_config_default() {
+        let config = ConsciousnessConfig::default();
+        assert_eq!(config.competition_threshold, 0.7);
+        assert_eq!(config.phi_threshold, 0.85);
+        assert_eq!(config.broadcast_channel_size, 100);
+        assert_eq!(config.phi_epsilon, 1e-6);
+        assert!(config.enable_higher_order);
+        assert!(config.enable_predictive);
+        assert!(config.enable_attention);
+    }
+
+    #[test]
+    fn test_consciousness_config_from_env() {
+        // Test that from_env works even without env vars (uses defaults)
+        let config = ConsciousnessConfig::from_env();
+        assert!(config.competition_threshold > 0.0);
+        assert!(config.phi_threshold > 0.0);
+        assert!(config.broadcast_channel_size > 0);
+        assert!(config.enable_higher_order);
+        assert!(config.enable_predictive);
+        assert!(config.enable_attention);
     }
 }
 

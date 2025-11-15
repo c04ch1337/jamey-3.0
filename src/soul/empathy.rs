@@ -1,5 +1,5 @@
 use super::entity::SoulEntity;
-use super::emotion::Emotion;
+use super::emotion::EmotionType;
 use super::trust::TrustCalculator;
 use std::collections::HashMap;
 
@@ -8,10 +8,10 @@ pub struct EmpathyScorer;
 
 impl EmpathyScorer {
     /// Score an interaction and update entity trust
-    pub fn score_interaction(entity: &mut SoulEntity, new_emotions: HashMap<Emotion, u32>) {
+    pub fn score_interaction(entity: &mut SoulEntity, new_emotions: HashMap<EmotionType, u32>) {
         // Merge new emotions with existing
-        for (emotion, count) in new_emotions {
-            *entity.emotions.entry(emotion).or_insert(0) += count;
+        for (emotion_type, count) in new_emotions {
+            *entity.emotions.entry(emotion_type).or_insert(0) += count;
         }
         
         // Calculate empathy and adjust trust

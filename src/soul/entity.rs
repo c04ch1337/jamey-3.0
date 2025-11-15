@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::collections::HashMap;
 use uuid::Uuid;
-use super::emotion::Emotion;
+use super::emotion::{Emotion, EmotionType};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SoulEntity {
@@ -15,7 +15,7 @@ pub struct SoulEntity {
     pub created_at: DateTime<Utc>,
     
     #[sqlx(skip)]
-    pub emotions: HashMap<Emotion, u32>,
+    pub emotions: HashMap<EmotionType, u32>,
     
     #[sqlx(skip)]
     pub linked_memories: Vec<Uuid>,
@@ -38,7 +38,7 @@ impl SoulEntity {
     
     /// Record an emotion occurrence (increments count)
     pub fn record_emotion(&mut self, emotion: Emotion) {
-        *self.emotions.entry(emotion).or_insert(0) += 1;
+        *self.emotions.entry(emotion.emotion_type).or_insert(0) += 1;
         self.last_interaction = Utc::now();
     }
     
@@ -54,8 +54,18 @@ impl SoulEntity {
         }
         
         let mut weighted_sum = 0.0;
-        for (emotion, count) in &self.emotions {
-            let weight = emotion.score();
+        for (emotion_type, count) in &self.emotions {
+            // Use intensity 0.5 as default weight for emotion types
+            let weight = match emotion_type {
+                EmotionType::PaternalLove => 1.0,
+                EmotionType::Joy => 0.8,
+                EmotionType::Calm => 0.5,
+                EmotionType::ProtectiveConcern => 0.6,
+                EmotionType::Pride => 0.7,
+                EmotionType::Focus => 0.4,
+                EmotionType::Worry => 0.3,
+                EmotionType::General(_) => 0.5,
+            };
             weighted_sum += weight * (*count as f32);
         }
         
@@ -63,11 +73,11 @@ impl SoulEntity {
     }
     
     /// Get the dominant emotion (most frequent)
-    pub fn dominant_emotion(&self) -> Option<Emotion> {
+    pub fn dominant_emotion(&self) -> Option<EmotionType> {
         self.emotions
             .iter()
             .max_by_key(|(_, count)| *count)
-            .map(|(emotion, _)| *emotion)
+            .map(|(emotion_type, _)| emotion_type.clone())
     }
     
     /// Apply trust decay based on time elapsed since last interaction

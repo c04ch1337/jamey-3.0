@@ -1,19 +1,32 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { evaluateAction, getRules, addRule, type MoralRule, type AddRuleRequest } from './api/client'
+import { evaluateAction, getRules, addRule, type MoralRule, type AddRuleRequest, AddRuleRequestSchema } from './api/client'
+import { z } from 'zod'
 import './App.css'
+
+// Input validation schema
+const ActionSchema = z.string()
+  .min(1, 'Action cannot be empty')
+  .max(1000, 'Action too long (max 1000 characters)');
 
 function App() {
   const [action, setAction] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
   const [newRule, setNewRule] = useState<AddRuleRequest>({
     name: '',
     description: '',
     weight: 8.0,
   })
+  const [ruleError, setRuleError] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   // Fetch rules
-  const { data: rules = [], isLoading: rulesLoading } = useQuery({
+  const { 
+    data: rules = [], 
+    isLoading: rulesLoading, 
+    isError: rulesError,
+    error: rulesErrorDetails 
+  } = useQuery({
     queryKey: ['rules'],
     queryFn: getRules,
   })
@@ -36,15 +49,29 @@ function App() {
   })
 
   const handleEvaluate = () => {
-    if (action.trim()) {
-      evaluateMutation.mutate(action)
+    setActionError(null)
+    
+    // Validate input
+    const validation = ActionSchema.safeParse(action.trim())
+    if (!validation.success) {
+      setActionError(validation.error.errors[0]?.message || 'Invalid input')
+      return
     }
+
+    evaluateMutation.mutate(validation.data)
   }
 
   const handleAddRule = () => {
-    if (newRule.name && newRule.description) {
-      addRuleMutation.mutate(newRule)
+    setRuleError(null)
+    
+    // Validate input
+    const validation = AddRuleRequestSchema.safeParse(newRule)
+    if (!validation.success) {
+      setRuleError(validation.error.errors[0]?.message || 'Invalid input')
+      return
     }
+
+    addRuleMutation.mutate(validation.data)
   }
 
   return (
@@ -83,9 +110,21 @@ function App() {
             </div>
           )}
 
+          {actionError && (
+            <div className="error">
+              {actionError}
+            </div>
+          )}
           {evaluateMutation.isError && (
             <div className="error">
-              Error evaluating action. Please try again.
+              <strong>Error:</strong> {
+                evaluateMutation.error instanceof Error 
+                  ? evaluateMutation.error.message 
+                  : 'Failed to evaluate action. Please try again.'
+              }
+              {evaluateMutation.error && 'response' in evaluateMutation.error && (
+                <span> (Status: {(evaluateMutation.error as any).response?.status})</span>
+              )}
             </div>
           )}
         </section>
@@ -94,15 +133,27 @@ function App() {
           <h2>Moral Rules</h2>
           {rulesLoading ? (
             <p>Loading rules...</p>
+          ) : rulesError ? (
+            <div className="error">
+              <strong>Error loading rules:</strong> {
+                rulesErrorDetails instanceof Error 
+                  ? rulesErrorDetails.message 
+                  : 'Failed to load rules. Please refresh the page.'
+              }
+            </div>
           ) : (
             <div className="rules-list">
-              {rules.map((rule) => (
-                <div key={rule.name} className="rule-card">
-                  <h3>{rule.name}</h3>
-                  <p>{rule.description}</p>
-                  <span className="weight">Weight: {rule.weight}</span>
-                </div>
-              ))}
+              {rules.length === 0 ? (
+                <p>No rules defined yet.</p>
+              ) : (
+                rules.map((rule) => (
+                  <div key={rule.name} className="rule-card">
+                    <h3>{rule.name}</h3>
+                    <p>{rule.description}</p>
+                    <span className="weight">Weight: {rule.weight}</span>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -127,6 +178,20 @@ function App() {
               onChange={(e) => setNewRule({ ...newRule, weight: parseFloat(e.target.value) || 0 })}
               step="0.1"
             />
+            {ruleError && (
+              <div className="error" style={{ marginTop: '0.5rem' }}>
+                {ruleError}
+              </div>
+            )}
+            {addRuleMutation.isError && (
+              <div className="error" style={{ marginTop: '0.5rem' }}>
+                <strong>Error:</strong> {
+                  addRuleMutation.error instanceof Error 
+                    ? addRuleMutation.error.message 
+                    : 'Failed to add rule. Please try again.'
+                }
+              </div>
+            )}
             <button onClick={handleAddRule} disabled={addRuleMutation.isPending}>
               {addRuleMutation.isPending ? 'Adding...' : 'Add Rule'}
             </button>

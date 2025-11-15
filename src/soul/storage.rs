@@ -1,8 +1,9 @@
 use sqlx::{SqlitePool, Row};
 use anyhow::Result;
 use super::entity::SoulEntity;
-use super::emotion::Emotion;
+use super::emotion::{Emotion, EmotionType};
 use uuid::Uuid;
+use chrono::Utc;
 
 pub struct SoulStorage {
     pool: SqlitePool,
@@ -45,8 +46,16 @@ impl SoulStorage {
         };
         
         // Update emotions
-        for (emotion, count) in &entity.emotions {
-            self.record_emotion(entity_id, *emotion, *count).await?;
+        for (emotion_type, count) in &entity.emotions {
+            let emotion = Emotion {
+                id: Uuid::new_v4(),
+                emotion_type: emotion_type.clone(),
+                intensity: 0.5,
+                target: None,
+                timestamp: Utc::now(),
+                duration: 0.0,
+            };
+            self.record_emotion(entity_id, emotion, *count).await?;
         }
         
         // Update memory links
@@ -102,7 +111,7 @@ impl SoulStorage {
             "#
         )
         .bind(entity_id)
-        .bind(emotion.name())
+        .bind(emotion.emotion_type.to_string())
         .bind(count as i64)
         .execute(&self.pool)
         .await?;
@@ -111,7 +120,7 @@ impl SoulStorage {
     }
     
     /// Get emotions for an entity
-    async fn get_emotions(&self, entity_id: i64) -> Result<std::collections::HashMap<Emotion, u32>> {
+    async fn get_emotions(&self, entity_id: i64) -> Result<std::collections::HashMap<EmotionType, u32>> {
         let rows = sqlx::query(
             "SELECT emotion, count FROM soul_emotions WHERE entity_id = ?"
         )
@@ -122,9 +131,10 @@ impl SoulStorage {
         let mut emotions = std::collections::HashMap::new();
         for row in rows {
             let emotion_str: String = row.get("emotion");
-            if let Some(emotion) = Emotion::from_str(&emotion_str) {
+            // Parse the emotion type string into EmotionType
+            if let Ok(emotion_type) = emotion_str.parse::<EmotionType>() {
                 let count: i64 = row.get("count");
-                emotions.insert(emotion, count as u32);
+                emotions.insert(emotion_type, count as u32);
             }
         }
         
