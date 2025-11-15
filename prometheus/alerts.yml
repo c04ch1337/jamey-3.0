@@ -1,0 +1,83 @@
+groups:
+  - name: jamey_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected in Jamey 3.0"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected in Jamey 3.0"
+          description: "P95 latency is {{ $value }}s (threshold: 1.0s)"
+
+      - alert: MemoryIndexSizeExceeded
+        expr: memory_index_size_bytes > 1073741824
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory index size exceeded threshold"
+          description: "Index {{ $labels.layer }} is {{ $value | humanize1024 }}B (threshold: 1GB)"
+
+      - alert: BackupFailure
+        expr: increase(backup_operations_total{status="failure"}[1h]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup operation failed"
+          description: "Backup operation failed for component {{ $labels.component }}"
+
+      - alert: BackupNotRunning
+        expr: increase(backup_operations_total[24h]) == 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "No backups in last 24 hours"
+          description: "No backup operations have occurred in the last 24 hours"
+
+      - alert: MQTTConnectionFailure
+        expr: mqtt_connection_state == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MQTT connection lost"
+          description: "MQTT client has been disconnected for more than 2 minutes"
+
+      - alert: HighMemoryUsage
+        expr: system_memory_bytes / 1024 / 1024 / 1024 > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "System memory usage is {{ $value }}GB (threshold: 8GB)"
+
+      - alert: LowDiskSpace
+        expr: system_disk_free_bytes < 10737418240
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk free space is {{ $value | humanize1024 }}B (threshold: 10GB)"
+
+      - alert: ServiceDown
+        expr: up{job="jamey"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jamey 3.0 service is down"
+          description: "The Jamey 3.0 service has been down for more than 1 minute"
+

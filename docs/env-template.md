@@ -1,0 +1,115 @@
+# Environment Template
+
+This template should be used to generate the `.env.example` file. Copy the content below (excluding this header) into `.env.example`.
+
+```env
+# Jamey 3.0 Configuration Template
+# Copy this file to .env and adjust values according to your environment
+
+###########################################
+# 1. Core Configuration
+###########################################
+
+# OpenRouter API Configuration
+OPENROUTER_API_KEY=                # [Required] Your OpenRouter API key
+OPENROUTER_MODEL=anthropic/claude-3.5-sonnet  # [Optional] LLM model selection
+OPENROUTER_API_URL=https://openrouter.ai/api/v1  # [Optional] API endpoint
+
+# Database Configuration
+DATABASE_URL=sqlite:data/jamey.db   # [Optional] SQLite database path
+DATA_DIR=./data                     # [Optional] Override data directory
+
+###########################################
+# 2. Security Configuration
+###########################################
+
+# API Authentication
+# Required in production - Generate with: openssl rand -hex 32
+API_KEY=
+
+# CORS Configuration
+# Required in production - Comma-separated list of allowed origins
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_RPS=50                  # [Optional] Requests per second per IP
+RATE_LIMIT_BURST=100               # [Optional] Maximum burst size
+
+# Input Validation
+MAX_ACTION_LENGTH=10000            # [Optional] Maximum action text length
+MAX_RULE_NAME_LENGTH=100           # [Optional] Maximum rule name length
+MAX_RULE_DESCRIPTION_LENGTH=500    # [Optional] Maximum rule description length
+MIN_RULE_WEIGHT=0.0                # [Optional] Minimum rule weight
+MAX_RULE_WEIGHT=100.0              # [Optional] Maximum rule weight
+
+###########################################
+# 3. Soul System Configuration
+###########################################
+
+# Core Settings
+SOUL_ENABLED=true                  # [Optional] Enable/disable Soul system
+SOUL_AUTO_RECORD=true              # [Optional] Auto-record emotions
+
+# Trust and Decay Parameters
+SOUL_DEFAULT_TRUST=0.5             # [Optional] Default trust level
+SOUL_BASE_DECAY_RATE=0.01          # [Optional] Base memory decay rate
+SOUL_PRUNE_THRESHOLD=0.1           # [Optional] Memory pruning threshold
+SOUL_EMPATHY_THRESHOLD=0.7         # [Optional] Empathy activation threshold
+
+###########################################
+# 4. MQTT Configuration
+###########################################
+
+# Connection Settings
+MQTT_BROKER_URL=mqtt://localhost   # [Optional] Broker URL
+MQTT_PORT=8883                     # [Optional] Broker port
+
+# TLS Configuration
+MQTT_TLS_CA_CERT=./certs/ta-ca.crt  # [Required if using TLS] CA certificate path
+MQTT_TLS_CLIENT_CERT=              # [Optional] Client certificate for mTLS
+MQTT_TLS_CLIENT_KEY=               # [Optional] Client private key for mTLS
+
+# Authentication
+# Required if MQTT enabled - Generate with: openssl rand -hex 32
+MQTT_JWT_SECRET=
+MQTT_JWT_LIFETIME_SECONDS=300      # [Optional] JWT token lifetime
+
+# Client Settings
+MQTT_CLIENT_ID=jamey-instance-1    # [Optional] Client identifier
+MQTT_KEEP_ALIVE_SECONDS=60         # [Optional] Keep-alive interval
+MQTT_MAX_PACKET_SIZE=268435456     # [Optional] Maximum packet size (256 MB)
+MQTT_CONNECTION_TIMEOUT_SECONDS=30  # [Optional] Connection timeout
+
+# Permissions
+MQTT_PERMISSIONS=jamey/#           # [Optional] Comma-separated topic permissions
+
+###########################################
+# 5. Phoenix Backup System
+###########################################
+
+# Core Settings
+PHOENIX_ENABLED=true               # [Optional] Enable/disable backup system
+PHOENIX_BACKUP_DIR=data/phoenix    # [Optional] Backup directory
+
+# Encryption
+# Required if Phoenix enabled - Generate with: openssl rand -hex 32
+PHOENIX_ENCRYPTION_KEY=
+
+# Backup Configuration
+PHOENIX_AUTO_BACKUP_HOURS=24       # [Optional] Automatic backup interval
+PHOENIX_MAX_BACKUPS=10             # [Optional] Maximum backups to retain
+
+###########################################
+# 6. Operational Settings
+###########################################
+
+# Server Configuration
+PORT=3000                          # [Optional] Server port
+HOST=0.0.0.0                       # [Optional] Server host
+
+# Logging
+RUST_LOG=info                      # [Optional] Log level (error|warn|info|debug|trace)
+
+# Development
+DEV_MODE=false                     # [Optional] Enable development mode
+ENABLE_TEST_FEATURES=false         # [Optional] Enable test features

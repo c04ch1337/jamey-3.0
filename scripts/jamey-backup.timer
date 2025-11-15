@@ -1,0 +1,14 @@
+[Unit]
+Description=Jamey 3.0 Daily Database Backup Timer
+Requires=jamey-backup.service
+
+[Timer]
+# Run daily at 2 AM
+OnCalendar=*-*-* 02:00:00
+# Add randomization to prevent all instances running at exactly the same time
+RandomizedDelaySec=1800
+# Keep track of when we last ran
+Persistent=true
+
+[Install]
+WantedBy=timers.target

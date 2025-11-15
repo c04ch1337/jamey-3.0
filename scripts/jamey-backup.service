@@ -1,0 +1,23 @@
+[Unit]
+Description=Jamey 3.0 Database Backup Service
+After=jamey.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/jamey/scripts/backup-db.sh
+User=jamey
+Group=jamey
+
+# Set reasonable security limits
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/jamey/data/backups
+PrivateTmp=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.service
