@@ -11,7 +11,7 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "migrate"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -23,7 +23,14 @@ thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.2"
+# Opentelemetry
+opentelemetry = { version = "0.22" }
+opentelemetry-otlp = { version = "0.15", features = ["tokio"] }
+tracing-opentelemetry = "0.23"
+opentelemetry-jaeger = { version = "0.21", features = ["tokio"] }
 
 # Search/Indexing
 tantivy = "0.22"
@@ -53,6 +60,13 @@ rustls = "0.23"
 rustls-pemfile = "2.0"
 jsonwebtoken = "9.3"
 
+# Security dependencies
+validator = { version = "0.18", features = ["derive"] }
+governor = "0.6"
+bcrypt = "0.15"
+regex = "1.10"
+time = { version = "0.3", features = ["serde"] }
+
 # Async runtime utilities
 futures = "0.3"
 
@@ -70,5 +84,10 @@ name = "jamey-cli"
 path = "src/bin/jamey-cli.rs"
 
 [dev-dependencies]
-tokio-test = "0.4"
+criterion = { version = "0.5", features = ["async_tokio"] }
+tempfile = "3.10"
+
+[[bench]]
+name = "system_benchmarks"
+harness = false
 

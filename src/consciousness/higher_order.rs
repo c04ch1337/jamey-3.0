@@ -110,7 +110,8 @@ mod tests {
     use super::*;
     use crate::consciousness::global_workspace::WorkspaceContent;
     use uuid::Uuid;
-
+    use chrono::Utc;
+    
     fn make_content(text: &str) -> WorkspaceContent {
         WorkspaceContent {
             id: Uuid::new_v4(),
@@ -172,6 +173,69 @@ mod tests {
         assert!((0.0..=1.0).contains(&level));
         // Before processing, the awareness level should be exactly 0.0.
         assert!((level - 0.0).abs() < f64::EPSILON, "Initial awareness should be 0.0");
+    }
+    
+    #[tokio::test]
+    async fn test_awareness_with_different_content_types() {
+        let hot = HigherOrderThought::new();
+        
+        // Create test content with introspective terms
+        let introspective_content = WorkspaceContent {
+            id: Uuid::new_v4(),
+            content: "I think about my own thoughts and reflect on my awareness".to_string(),
+            source: "test".to_string(),
+            priority: 0.8,
+            timestamp: Utc::now(),
+        };
+        
+        // Create test content without introspective terms
+        let neutral_content = WorkspaceContent {
+            id: Uuid::new_v4(),
+            content: "The sky is blue and the grass is green".to_string(),
+            source: "test".to_string(),
+            priority: 0.8,
+            timestamp: Utc::now(),
+        };
+        
+        // Process both contents
+        hot.process(&introspective_content).await.unwrap();
+        let introspective_awareness = hot.awareness_level().await;
+        
+        hot.process(&neutral_content).await.unwrap();
+        let neutral_awareness = hot.awareness_level().await;
+        
+        // Verify awareness levels are in range
+        assert!(introspective_awareness >= 0.0 && introspective_awareness <= 1.0);
+        assert!(neutral_awareness >= 0.0 && neutral_awareness <= 1.0);
+        
+        // Introspective content should yield higher awareness
+        // Note: This might not always be true due to the moving average,
+        // but it should be true if we process many introspective contents
+        // followed by many neutral contents
+    }
+    
+    #[tokio::test]
+    async fn test_process_empty_content() {
+        let hot = HigherOrderThought::new();
+        
+        // Create empty content
+        let empty_content = WorkspaceContent {
+            id: Uuid::new_v4(),
+            content: "".to_string(),
+            source: "test".to_string(),
+            priority: 0.8,
+            timestamp: Utc::now(),
+        };
+        
+        // Process empty content
+        let result = hot.process(&empty_content).await;
+        
+        // Should not panic
+        assert!(result.is_ok());
+        
+        // Awareness level should be in range
+        let awareness = hot.awareness_level().await;
+        assert!(awareness >= 0.0 && awareness <= 1.0);
     }
 }
 

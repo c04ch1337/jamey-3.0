@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { z } from 'zod';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -18,9 +18,19 @@ export const MoralRuleSchema = z.object({
   weight: z.number(),
 });
 
+// Input sanitization function
+const sanitizeInput = (input: string): string => {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .slice(0, 1000); // Enforce max length
+};
+
 export const AddRuleRequestSchema = z.object({
-  name: z.string().min(1, 'Rule name is required').max(100, 'Rule name too long'),
-  description: z.string().min(1, 'Description is required').max(500, 'Description too long'),
+  name: z.string().min(1, 'Rule name is required').max(100, 'Rule name too long').transform(sanitizeInput),
+  description: z.string().min(1, 'Description is required').max(500, 'Description too long').transform(sanitizeInput),
   weight: z.number().min(0, 'Weight must be >= 0').max(100, 'Weight must be <= 100'),
 });
 
@@ -32,6 +42,16 @@ export const apiClient = axios.create({
   },
 });
 
+// Generates a mock traceparent header.
+// In a real-world scenario, you would use OpenTelemetry JS to generate this.
+const generateTraceParent = (): string => {
+  const version = '00';
+  const traceId = crypto.randomUUID().replace(/-/g, '');
+  const spanId = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+  const flags = '01'; // Sampled
+  return `${version}-${traceId}-${spanId}-${flags}`;
+};
+
 // Request interceptor - can add auth tokens here if needed
 apiClient.interceptors.request.use(
   (config) => {
@@ -40,6 +60,8 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add traceparent header for distributed tracing
+    config.headers['traceparent'] = generateTraceParent();
     return config;
   },
   (error) => {
@@ -55,7 +77,7 @@ apiClient.interceptors.response.use(
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
-      const data = error.response.data as any;
+      const data = error.response.data as Record<string, unknown>;
       
       if (status === 401) {
         // Unauthorized - clear token if exists

@@ -1,0 +1,98 @@
+groups:
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Critical: System unavailable
+      - alert: SystemUnavailable
+        expr: up{job="jamey-3-backend"} == 0
+        for: 1m
+        labels:
+          severity: P1
+          subsystem: system
+        annotations:
+          summary: "Critical: Backend system unavailable"
+          description: "Jamey 3.0 backend is not responding to health checks."
+          recovery_action: "Check service status, verify container/process is running, review logs"
+          runbook: "https://docs.jamey-3.0/runbooks/system-unavailable"
+
+      # Warning: High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: P2
+          subsystem: system
+        annotations:
+          summary: "Warning: High server error rate"
+          description: "Error rate is {{ $value }} errors per second, exceeding threshold."
+          recovery_action: "Review error logs, check for system resource issues, verify database connectivity"
+          runbook: "https://docs.jamey-3.0/runbooks/high-error-rate"
+
+      # Warning: High request latency
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: P2
+          subsystem: system
+        annotations:
+          summary: "Warning: High request latency detected"
+          description: "95th percentile request latency is {{ $value }}s, exceeding 1s threshold."
+          recovery_action: "Check database query performance, review memory usage, verify system resources"
+          runbook: "https://docs.jamey-3.0/runbooks/high-request-latency"
+
+      # Critical: Database connection failure
+      - alert: DatabaseConnectionFailure
+        expr: database_connection_errors_total > 0
+        for: 1m
+        labels:
+          severity: P1
+          subsystem: database
+        annotations:
+          summary: "Critical: Database connection failures"
+          description: "Database connection errors detected. System may be unable to persist data."
+          recovery_action: "Check database service, verify connection pool, review database logs"
+          runbook: "https://docs.jamey-3.0/runbooks/database-connection-failure"
+
+      # Warning: Memory usage high
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: P2
+          subsystem: system
+        annotations:
+          summary: "Warning: High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}, exceeding 85% threshold."
+          recovery_action: "Review memory-intensive operations, check for memory leaks, consider scaling"
+          runbook: "https://docs.jamey-3.0/runbooks/high-memory-usage"
+
+      # Warning: CPU usage high
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: P2
+          subsystem: system
+        annotations:
+          summary: "Warning: High CPU usage"
+          description: "CPU usage is {{ $value }}%, exceeding 80% threshold for 10 minutes."
+          recovery_action: "Review CPU-intensive operations, check for processing bottlenecks, consider scaling"
+          runbook: "https://docs.jamey-3.0/runbooks/high-cpu-usage"
+
+      # Info: Unusual metric pattern detected
+      - alert: UnusualMetricPattern
+        expr: |
+          (
+            rate(consciousness_phi_value[5m]) > 0.1 or
+            rate(emotion_intensity[5m]) > 0.2
+          )
+        for: 5m
+        labels:
+          severity: P3
+          subsystem: system
+        annotations:
+          summary: "Info: Unusual metric pattern detected"
+          description: "Rapid changes in consciousness or emotional metrics detected."
+          recovery_action: "Monitor for patterns, verify this is expected behavior"
+

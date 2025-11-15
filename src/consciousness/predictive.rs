@@ -82,5 +82,32 @@ mod tests {
         let confidence_long = (200.0f64 / 100.0f64).clamp(0.0, 1.0) * 0.5 + 0.5;
         assert_eq!(confidence_long, 1.0);
     }
+    
+    #[tokio::test]
+    async fn test_async_prediction_determinism() {
+        let predictor = PredictiveProcessor::new();
+        
+        // Process the same thought twice
+        let thought = "This is a test thought";
+        let prediction1 = predictor.process(thought).unwrap();
+        let prediction2 = predictor.process(thought).unwrap();
+        
+        // Predictions should be identical
+        assert_eq!(prediction1, prediction2, "Predictions should be deterministic");
+    }
+    
+    #[tokio::test]
+    async fn test_process_empty_thought() {
+        let predictor = PredictiveProcessor::new();
+        
+        // Process empty thought
+        let result = predictor.process("");
+        
+        // Should not panic
+        assert!(result.is_ok());
+        
+        // Result should not be empty
+        assert!(!result.unwrap().is_empty(), "Prediction should not be empty");
+    }
 }
 

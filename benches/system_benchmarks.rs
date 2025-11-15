@@ -3,298 +3,144 @@
 //! Comprehensive benchmarks for measuring and optimizing system performance
 //! across all major components.
 
-#![feature(test)]
-extern crate test;
-
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId, blackbox};
 use tokio::runtime::Runtime;
 use std::sync::Arc;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-use jamey_3::consciousness::{ConsciousnessEngine, ConsciousnessMetrics};
-use jamey_3::soul::emotion::EmotionManager;
+// Jamey 3.0 components
+use jamey_3::consciousness::{
+    ConsciousnessEngine,
+    global_workspace::{GlobalWorkspace, WorkspaceContent},
+    higher_order::HigherOrderThought,
+    integrated_info::PhiCalculator,
+    predictive::PredictiveProcessor,
+};
 use jamey_3::memory::{MemorySystem, MemoryLayer, holographic::HolographicMemory};
-use jamey_3::monitoring::{
-    metrics::MetricsCollector,
-    consciousness::ConsciousnessMonitor,
+use jamey_3::soul::emotion::EmotionManager;
+use jamey_3::db::{
+    self,
+    operations::{DatabaseOperations, MemoryRecord},
 };
 
-/// Benchmark consciousness processing
-fn bench_consciousness(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    
-    let mut group = c.benchmark_group("consciousness");
-    group.sample_size(100);
-    
-    // Setup test environment
-    let memory = rt.block_on(async {
-        Arc::new(MemorySystem::new(PathBuf::from("bench_data")).await.unwrap())
-    });
-    let consciousness = rt.block_on(async {
-        Arc::new(ConsciousnessEngine::new(memory.clone()).await.unwrap())
-    });
+/// Sets up a Tokio runtime for benchmarks.
+fn setup_runtime() -> Runtime {
+    Runtime::new().unwrap()
+}
 
-    // Benchmark different input sizes
-    for size in [10, 100, 1000].iter() {
-        let input = "x".repeat(*size);
-        
-        group.bench_with_input(
-            BenchmarkId::new("process_information", size),
-            &input,
-            |b, input| {
-                b.iter(|| {
-                    rt.block_on(async {
-                        consciousness.process_information(input).await.unwrap()
-                    })
-                })
+/// Creates a temporary in-memory database for isolated testing.
+async fn setup_test_db() -> (DatabaseOperations, tempfile::TempDir) {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let db_path = temp_dir.path().join("test_bench.db");
+    
+    // Use an in-memory database by specifying ":memory:" or a temp file
+    let pool = db::init_db_with_config(db::DatabaseConfig {
+        database_url: format!("sqlite://{}?mode=rwc", db_path.to_str().unwrap()),
+        max_connections: 1,
+        ..Default::default()
+    }).await.unwrap();
+    
+    // Run migrations
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+
+    let metrics = db::DbMetrics::new();
+    let db_ops = DatabaseOperations::new(pool, metrics);
+
+    (db_ops, temp_dir)
+}
+
+/// Benchmark database operations for creating entities and querying emotional states.
+fn bench_database_operations(c: &mut Criterion) {
+    let rt = setup_runtime();
+    let (db_ops, _temp_dir) = rt.block_on(setup_test_db());
+    let db_ops = Arc::new(db_ops);
+
+    let mut group = c.benchmark_group("database");
+    group.sample_size(10);
+
+    // Benchmark: Insert a new memory record
+    group.bench_function("insert_memory_record", |b| {
+        b.to_async(&rt).iter_with_setup(
+            || {
+                // Setup for each iteration: new content and ID
+                (
+                    Uuid::new_v4().to_string(),
+                    "Test content for insertion benchmark".to_string(),
+                    chrono::Utc::now()
+                )
             },
-        );
-    }
-
-    group.finish();
-}
-
-/// Benchmark memory operations
-fn bench_memory(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    
-    let mut group = c.benchmark_group("memory");
-    group.sample_size(100);
-    
-    let memory = rt.block_on(async {
-        Arc::new(MemorySystem::new(PathBuf::from("bench_data")).await.unwrap())
-    });
-
-    // Benchmark storage
-    for size in [10, 100, 1000].iter() {
-        let content = "x".repeat(*size);
-        
-        group.bench_with_input(
-            BenchmarkId::new("store", size),
-            &content,
-            |b, content| {
-                b.iter(|| {
-                    rt.block_on(async {
-                        memory.store(MemoryLayer::Episodic, content.to_string()).await.unwrap()
-                    })
-                })
-            },
-        );
-    }
-
-    // Benchmark search
-    group.bench_function("search", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                memory.search(MemoryLayer::Episodic, "test", 10).await.unwrap()
-            })
-        })
+            |(id, content, timestamp)| async {
+                db_ops.insert_memory_record(
+                    &id,
+                    &content,
+                    &timestamp,
+                    "episodic",
+                    Some("neutral"),
+                    None,
+                ).await.unwrap();
+            }
+        )
     });
 
     group.finish();
 }
 
-/// Benchmark holographic memory
-fn bench_holographic(c: &mut Criterion) {
-    let mut group = c.benchmark_group("holographic");
-    group.sample_size(100);
-    
-    let memory = HolographicMemory::new();
 
-    // Benchmark encoding
-    for size in [10, 100, 1000].iter() {
-        let content = "x".repeat(*size);
-        
-        group.bench_with_input(
-            BenchmarkId::new("encode", size),
-            &content,
-            |b, content| {
-                b.iter(|| {
-                    memory.encode(
-                        content,
-                        vec!["test".to_string()],
-                        vec!["test".to_string()],
-                    ).unwrap()
-                })
-            },
-        );
-    }
+/// Benchmark the core consciousness subsystems.
+fn bench_consciousness_subsystems(c: &mut Criterion) {
+    let rt = setup_runtime();
+    let mut group = c.benchmark_group("consciousness_subsystems");
 
-    // Benchmark pattern matching
-    group.bench_function("pattern_matching", |b| {
-        let trace = memory.encode(
-            "test pattern",
-            vec!["test".to_string()],
-            vec!["test".to_string()],
-        ).unwrap();
+    // --- Global Workspace Benchmark ---
+    let workspace = GlobalWorkspace::new();
+    let long_content = "This is a meaningful and sufficiently long content to ensure it gets broadcasted.".to_string();
+    group.bench_function("global_workspace_broadcast", |b| {
+        b.to_async(&rt).iter(|| async {
+            workspace.broadcast(&long_content).await.unwrap();
+        })
+    });
 
-        b.iter(|| memory.find_similar(&trace, 0.5))
+    // --- Higher-Order Thought Benchmark ---
+    let hot = HigherOrderThought::new();
+    let introspective_content = WorkspaceContent {
+        id: Uuid::new_v4(),
+        content: "I think about my own thinking process and reflect on my awareness.".to_string(),
+        source: "benchmark".to_string(),
+        priority: 0.9,
+        timestamp: chrono::Utc::now(),
+    };
+    group.bench_function("higher_order_thought_process", |b| {
+        b.to_async(&rt).iter(|| hot.process(blackbox(&introspective_content)))
+    });
+
+    // --- Integrated Information (Phi) Benchmark ---
+    let phi_calculator = PhiCalculator::new();
+    let complex_content = WorkspaceContent {
+        id: Uuid::new_v4(),
+        content: "This content is designed to be complex, with punctuation! And varied structure to test Phi calculation.".to_string(),
+        source: "benchmark".to_string(),
+        priority: 0.9,
+        timestamp: chrono::Utc::now(),
+    };
+    group.bench_function("phi_calculation", |b| {
+        b.to_async(&rt).iter(|| phi_calculator.calculate(blackbox(&complex_content)))
+    });
+
+    // --- Predictive Processing Benchmark ---
+    let predictive_processor = PredictiveProcessor::new();
+    let thought_for_prediction = "The system is observing multiple data streams, a decision must be made.";
+    group.bench_function("predictive_processing", |b| {
+        b.iter(|| predictive_processor.process(blackbox(thought_for_prediction)))
     });
 
     group.finish();
 }
 
-/// Benchmark emotional processing
-fn bench_emotion(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    
-    let mut group = c.benchmark_group("emotion");
-    group.sample_size(100);
-    
-    let emotion_manager = EmotionManager::new();
-
-    // Benchmark emotional processing
-    for size in [10, 100, 1000].iter() {
-        let content = "x".repeat(*size);
-        
-        group.bench_with_input(
-            BenchmarkId::new("process_stimulus", size),
-            &content,
-            |b, content| {
-                b.iter(|| {
-                    rt.block_on(async {
-                        emotion_manager.process_stimulus(
-                            content,
-                            Some("test".to_string()),
-                        ).await.unwrap()
-                    })
-                })
-            },
-        );
-    }
-
-    // Benchmark stability calculation
-    group.bench_function("calculate_stability", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                emotion_manager.calculate_stability().await
-            })
-        })
-    });
-
-    group.finish();
-}
-
-/// Benchmark monitoring system
-fn bench_monitoring(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    
-    let mut group = c.benchmark_group("monitoring");
-    group.sample_size(100);
-    
-    // Setup monitoring components
-    let memory = rt.block_on(async {
-        Arc::new(MemorySystem::new(PathBuf::from("bench_data")).await.unwrap())
-    });
-    let consciousness = rt.block_on(async {
-        Arc::new(ConsciousnessEngine::new(memory.clone()).await.unwrap())
-    });
-    let emotion_manager = Arc::new(EmotionManager::new());
-    
-    let metrics = Arc::new(MetricsCollector::new(
-        consciousness.clone(),
-        emotion_manager.clone(),
-        memory.clone(),
-        1,
-    ).unwrap());
-
-    let monitor = ConsciousnessMonitor::new(
-        consciousness.clone(),
-        emotion_manager.clone(),
-        metrics.clone(),
-    );
-
-    // Benchmark anomaly detection
-    group.bench_function("detect_anomalies", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                monitor.detect_anomalies().await.unwrap()
-            })
-        })
-    });
-
-    // Benchmark metrics collection
-    group.bench_function("collect_metrics", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                metrics.collect_metrics().await.unwrap()
-            })
-        })
-    });
-
-    group.finish();
-}
-
-/// Benchmark parallel processing capabilities
-fn bench_parallel(c: &mut Criterion) {
-    let rt = Runtime::new().unwrap();
-    
-    let mut group = c.benchmark_group("parallel");
-    group.sample_size(100);
-    
-    let memory = rt.block_on(async {
-        Arc::new(MemorySystem::new(PathBuf::from("bench_data")).await.unwrap())
-    });
-    let consciousness = rt.block_on(async {
-        Arc::new(ConsciousnessEngine::new(memory.clone()).await.unwrap())
-    });
-
-    // Benchmark parallel information processing
-    group.bench_function("parallel_processing", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let futures: Vec<_> = (0..10)
-                    .map(|i| {
-                        let consciousness = consciousness.clone();
-                        tokio::spawn(async move {
-                            consciousness
-                                .process_information(&format!("parallel test {}", i))
-                                .await
-                                .unwrap()
-                        })
-                    })
-                    .collect();
-
-                futures::future::join_all(futures).await
-            })
-        })
-    });
-
-    // Benchmark parallel memory operations
-    group.bench_function("parallel_memory", |b| {
-        b.iter(|| {
-            rt.block_on(async {
-                let futures: Vec<_> = (0..10)
-                    .map(|i| {
-                        let memory = memory.clone();
-                        tokio::spawn(async move {
-                            memory
-                                .store(
-                                    MemoryLayer::Episodic,
-                                    format!("parallel memory test {}", i),
-                                )
-                                .await
-                                .unwrap()
-                        })
-                    })
-                    .collect();
-
-                futures::future::join_all(futures).await
-            })
-        })
-    });
-
-    group.finish();
-}
 
 criterion_group!(
     benches,
-    bench_consciousness,
-    bench_memory,
-    bench_holographic,
-    bench_emotion,
-    bench_monitoring,
-    bench_parallel,
+    bench_database_operations,
+    bench_consciousness_subsystems,
 );
 criterion_main!(benches);

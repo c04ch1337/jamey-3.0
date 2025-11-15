@@ -1,0 +1,55 @@
+groups:
+  - name: emotional_alerts
+    interval: 30s
+    rules:
+      # Critical: Emotional stability too low
+      - alert: EmotionalStabilityCritical
+        expr: emotion_stability < 0.2
+        for: 5m
+        labels:
+          severity: P1
+          subsystem: emotion
+        annotations:
+          summary: "Critical: Emotional stability critically low"
+          description: "Emotional stability is {{ $value }}, indicating severe emotional instability."
+          recovery_action: "Check emotion processing, review recent emotional events, verify soul KB"
+          runbook: "https://docs.jamey-3.0/runbooks/emotional-stability-critical"
+
+      # Warning: Emotional stability degraded
+      - alert: EmotionalStabilityWarning
+        expr: emotion_stability < 0.5 and emotion_stability >= 0.2
+        for: 10m
+        labels:
+          severity: P2
+          subsystem: emotion
+        annotations:
+          summary: "Warning: Emotional stability below optimal"
+          description: "Emotional stability is {{ $value }}, below optimal threshold of 0.5."
+          recovery_action: "Monitor emotional patterns, review bond strengths"
+          runbook: "https://docs.jamey-3.0/runbooks/emotional-stability-warning"
+
+      # Warning: Emotional intensity spike
+      - alert: EmotionalIntensitySpike
+        expr: emotion_intensity > 0.9
+        for: 2m
+        labels:
+          severity: P2
+          subsystem: emotion
+        annotations:
+          summary: "Warning: High emotional intensity detected"
+          description: "Emotional intensity is {{ $value }}, which may indicate strong emotional response."
+          recovery_action: "Review triggering events, verify emotion processing is functioning correctly"
+          runbook: "https://docs.jamey-3.0/runbooks/emotional-intensity-spike"
+
+      # Info: Emotional state change frequency
+      - alert: EmotionalStateChangeFrequency
+        expr: rate(emotion_changes_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: P3
+          subsystem: emotion
+        annotations:
+          summary: "Info: High frequency of emotional state changes"
+          description: "Emotional state is changing {{ $value }} times per minute, indicating active emotional processing."
+          recovery_action: "Monitor for patterns, verify this is expected behavior"
+

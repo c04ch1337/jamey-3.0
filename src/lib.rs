@@ -1,4 +1,6 @@
 pub mod api;
+pub mod backup;
+pub mod telemetry;
 pub mod cli;
 pub mod config;
 pub mod conscience;
@@ -7,6 +9,7 @@ pub mod db;
 pub mod llm;
 pub mod memory;
 pub mod mqtt;
+pub mod security;
 pub mod soul;
 
 // Re-export commonly used types
@@ -17,4 +20,6 @@ pub use config::{Config, ConsciousnessConfig, SoulConfig};
 pub use llm::OpenRouterClient;
 pub use mqtt::{MqttClient, MqttConfig, MqttError};
 pub use soul::{Emotion, SoulEntity, SoulStorage, TrustCalculator, EmpathyScorer};
+pub use security::{JwtAuth, JwtClaims, AuthError, SecurityHeadersLayer, RateLimitLayer};
+pub use backup::{BackupManager, BackupConfig, BackupManifest, BackupResult, RestoreManager, RestoreResult, BackupScheduler, ScheduleConfig};
 

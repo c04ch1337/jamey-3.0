@@ -231,6 +231,7 @@ npm run build
 - **docs/MQTT_USAGE.md** - MQTT client usage and configuration guide
 - **docs/setup/** - Setup and configuration guides
 - `docs/phase_4_6_architecture.md` - Soul KB and emoji emotion system design
+- **docs/deployment/containerization.md** - Guide to setting up and using the containerized development environment and CI/CD pipeline.
 
 ## License
 

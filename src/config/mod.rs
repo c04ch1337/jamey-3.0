@@ -1,4 +1,5 @@
 use std::env;
+use std::time::Duration;
 use crate::mqtt::MqttConfig;
 use serde::{Deserialize, Serialize};
 
@@ -54,6 +55,95 @@ impl SoulConfig {
                 .map(|v| v == "true")
                 .unwrap_or(true),
         }
+    }
+}
+
+/// Database configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatabaseConfig {
+    /// Maximum number of connections in the pool
+    pub max_connections: u32,
+    /// Connection timeout in seconds
+    pub connect_timeout_secs: u64,
+    /// Query timeout in seconds
+    pub query_timeout_secs: u64,
+    /// Enable performance metrics
+    pub enable_metrics: bool,
+    /// Enable WAL journal mode
+    pub enable_wal: bool,
+    /// Connection pool idle timeout in seconds
+    pub idle_timeout_secs: u64,
+    /// Connection pool max lifetime in seconds
+    pub max_lifetime_secs: u64,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            max_connections: 10,
+            connect_timeout_secs: 30,
+            query_timeout_secs: 10,
+            enable_metrics: true,
+            enable_wal: true,
+            idle_timeout_secs: 600, // 10 minutes
+            max_lifetime_secs: 1800, // 30 minutes
+        }
+    }
+}
+
+impl DatabaseConfig {
+    /// Load database configuration from environment variables
+    pub fn from_env() -> Self {
+        Self {
+            max_connections: env::var("DB_MAX_CONNECTIONS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10),
+            connect_timeout_secs: env::var("DB_CONNECT_TIMEOUT_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(30),
+            query_timeout_secs: env::var("DB_QUERY_TIMEOUT_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10),
+            enable_metrics: env::var("DB_ENABLE_METRICS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(true),
+            enable_wal: env::var("DB_ENABLE_WAL")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(true),
+            idle_timeout_secs: env::var("DB_IDLE_TIMEOUT_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(600),
+            max_lifetime_secs: env::var("DB_MAX_LIFETIME_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1800),
+        }
+    }
+
+    /// Get connect timeout as Duration
+    pub fn connect_timeout(&self) -> Duration {
+        Duration::from_secs(self.connect_timeout_secs)
+    }
+
+    /// Get query timeout as Duration
+    pub fn query_timeout(&self) -> Duration {
+        Duration::from_secs(self.query_timeout_secs)
+    }
+
+    /// Get idle timeout as Duration
+    pub fn idle_timeout(&self) -> Duration {
+        Duration::from_secs(self.idle_timeout_secs)
+    }
+
+    /// Get max lifetime as Duration
+    pub fn max_lifetime(&self) -> Duration {
+        Duration::from_secs(self.max_lifetime_secs)
     }
 }
 
@@ -176,6 +266,7 @@ pub struct Config {
     pub mqtt: Option<MqttConfig>,
     pub soul: SoulConfig,
     pub consciousness: ConsciousnessConfig,
+    pub database: DatabaseConfig,
 }
 
 impl Config {
@@ -217,6 +308,7 @@ impl Config {
             mqtt,
             soul: SoulConfig::from_env(),
             consciousness: ConsciousnessConfig::from_env(),
+            database: DatabaseConfig::from_env(),
         }))
     }
 
@@ -265,6 +357,38 @@ mod tests {
         assert!(config.enable_higher_order);
         assert!(config.enable_predictive);
         assert!(config.enable_attention);
+    }
+
+    #[test]
+    fn test_database_config_default() {
+        let config = DatabaseConfig::default();
+        assert_eq!(config.max_connections, 10);
+        assert_eq!(config.connect_timeout_secs, 30);
+        assert_eq!(config.query_timeout_secs, 10);
+        assert!(config.enable_metrics);
+        assert!(config.enable_wal);
+        assert_eq!(config.idle_timeout_secs, 600);
+        assert_eq!(config.max_lifetime_secs, 1800);
+    }
+
+    #[test]
+    fn test_database_config_from_env() {
+        // Test that from_env works even without env vars (uses defaults)
+        let config = DatabaseConfig::from_env();
+        assert!(config.max_connections > 0);
+        assert!(config.connect_timeout_secs > 0);
+        assert!(config.query_timeout_secs > 0);
+        assert!(config.enable_metrics);
+        assert!(config.enable_wal);
+    }
+
+    #[test]
+    fn test_database_config_durations() {
+        let config = DatabaseConfig::default();
+        assert_eq!(config.connect_timeout(), Duration::from_secs(30));
+        assert_eq!(config.query_timeout(), Duration::from_secs(10));
+        assert_eq!(config.idle_timeout(), Duration::from_secs(600));
+        assert_eq!(config.max_lifetime(), Duration::from_secs(1800));
     }
 }
 

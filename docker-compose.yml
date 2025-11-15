@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    labels:
+      - "logging=promtail"
+      - "service=backend"
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - cargo-cache:/usr/local/cargo/registry
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/jamey-3
+      - RUST_LOG=info
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - OTEL_SERVICE_NAME=jamey-3-backend
+    depends_on:
+      db:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    networks:
+      - jamey-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    labels:
+      - "logging=promtail"
+      - "service=frontend"
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - jamey-net
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=jamey-3
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - jamey-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "6831:6831/udp" # UDP agent
+      - "16686:16686" # Web UI
+    networks:
+      - jamey-net
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+      - ./loki:/etc/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    networks:
+      - jamey-net
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail:/etc/promtail
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    networks:
+      - jamey-net
+    depends_on:
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus:/etc/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      - jamey-net
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - jamey-net
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager:/config
+    command: --config.file=/config/alertmanager.yml
+    networks:
+      - jamey-net
+
+volumes:
+  postgres-data:
+  cargo-cache:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+
+networks:
+  jamey-net:
+    driver: bridge
