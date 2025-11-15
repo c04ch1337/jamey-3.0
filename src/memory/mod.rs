@@ -1,23 +1,17 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-<<<<<<< HEAD
 use std::time::Duration;
-=======
->>>>>>> origin/main
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, TantivyDocument};
 use uuid::Uuid;
-<<<<<<< HEAD
 use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::soul::SoulStorage;
 use crate::metrics;
-=======
->>>>>>> origin/main
 
 /// Represents a memory record
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,10 +20,8 @@ pub struct MemoryRecord {
     pub content: String,
     pub timestamp: DateTime<Utc>,
     pub layer: MemoryLayer,
-<<<<<<< HEAD
     pub entity_id: Option<String>, // Added for soul integration
-=======
->>>>>>> origin/main
+    pub preferred_llm_provider: Option<String>, // Preferred LLM model ID (e.g., "anthropic/claude-3-opus")
 }
 
 /// The five memory layers
@@ -57,13 +49,8 @@ impl MemoryLayer {
 /// Manages the 5-layer memory system with Tantivy indexing
 pub struct MemorySystem {
     indices: std::collections::HashMap<MemoryLayer, Index>,
-<<<<<<< HEAD
     data_dir: PathBuf,
     soul_storage: Option<Arc<SoulStorage>>, // Added for soul integration
-=======
-    #[allow(dead_code)]
-    data_dir: PathBuf, // Kept for potential future use (backup paths, etc.)
->>>>>>> origin/main
 }
 
 impl MemorySystem {
@@ -89,18 +76,11 @@ impl MemorySystem {
             schema_builder.add_text_field("id", STRING | STORED);
             schema_builder.add_text_field("content", TEXT | STORED);
             schema_builder.add_date_field("timestamp", INDEXED | STORED);
-<<<<<<< HEAD
             schema_builder.add_text_field("entity_id", STRING | STORED); // Added for soul integration
+            schema_builder.add_text_field("llm_provider", STRING | STORED); // Preferred LLM provider
             let schema = schema_builder.build();
 
             // Try to open existing index, or create new one
-            let index = match Index::open_in_dir(&layer_dir) {
-                Ok(idx) => idx,
-                Err(_) => Index::create_in_dir(&layer_dir, schema)?,
-=======
-            let schema = schema_builder.build();
-
-            // Try to open existing index, or create new one if it doesn't exist
             let index = match Index::open_in_dir(&layer_dir) {
                 Ok(idx) => {
                     // Index exists, verify schema matches
@@ -110,12 +90,10 @@ impl MemorySystem {
                     // Index doesn't exist, create it
                     Index::create_in_dir(&layer_dir, schema)?
                 }
->>>>>>> origin/main
             };
             indices.insert(layer, index);
         }
 
-<<<<<<< HEAD
         Ok(Self { 
             indices, 
             data_dir,
@@ -135,7 +113,7 @@ impl MemorySystem {
         layer: MemoryLayer,
         content: String,
     ) -> anyhow::Result<String> {
-        self.store_with_entity(layer, content, None).await
+        self.store_with_provider(layer, content, None, None).await
     }
 
     /// Store a memory record with optional entity link
@@ -145,13 +123,17 @@ impl MemorySystem {
         content: String,
         entity_id: Option<&str>,
     ) -> anyhow::Result<String> {
-=======
-        Ok(Self { indices, data_dir })
+        self.store_with_provider(layer, content, entity_id, None).await
     }
 
-    /// Store a memory record in the specified layer
-    pub async fn store(&self, layer: MemoryLayer, content: String) -> anyhow::Result<String> {
->>>>>>> origin/main
+    /// Store a memory record with optional entity link and LLM provider preference
+    pub async fn store_with_provider(
+        &self,
+        layer: MemoryLayer,
+        content: String,
+        entity_id: Option<&str>,
+        preferred_llm_provider: Option<&str>,
+    ) -> anyhow::Result<String> {
         let id = Uuid::new_v4().to_string();
         let timestamp = Utc::now();
 
@@ -160,10 +142,8 @@ impl MemorySystem {
             content: content.clone(),
             timestamp,
             layer,
-<<<<<<< HEAD
             entity_id: entity_id.map(String::from),
-=======
->>>>>>> origin/main
+            preferred_llm_provider: preferred_llm_provider.map(String::from),
         };
 
         // Get the index for this layer
@@ -176,33 +156,28 @@ impl MemorySystem {
         let id_field = schema.get_field("id")?;
         let content_field = schema.get_field("content")?;
         let timestamp_field = schema.get_field("timestamp")?;
-<<<<<<< HEAD
         let entity_field = schema.get_field("entity_id")?;
-=======
->>>>>>> origin/main
+        let llm_provider_field = schema.get_field("llm_provider")?;
 
         // Create document
         let mut doc = TantivyDocument::default();
         doc.add_text(id_field, &record.id);
         doc.add_text(content_field, &record.content);
-<<<<<<< HEAD
+        // Convert chrono DateTime to Tantivy DateTime (Unix timestamp in seconds)
         let tantivy_timestamp = tantivy::DateTime::from_timestamp_secs(timestamp.timestamp());
         doc.add_date(timestamp_field, tantivy_timestamp);
         if let Some(entity_id) = &record.entity_id {
             doc.add_text(entity_field, entity_id);
         }
-=======
-        // Convert chrono DateTime to Tantivy DateTime (Unix timestamp in seconds)
-        let tantivy_timestamp = tantivy::DateTime::from_timestamp_secs(timestamp.timestamp());
-        doc.add_date(timestamp_field, tantivy_timestamp);
->>>>>>> origin/main
+        if let Some(llm_provider) = &record.preferred_llm_provider {
+            doc.add_text(llm_provider_field, llm_provider);
+        }
 
         // Write to index
         let mut index_writer: IndexWriter = index.writer(50_000_000)?;
         index_writer.add_document(doc)?;
         index_writer.commit()?;
 
-<<<<<<< HEAD
         // Link memory to soul entity if provided
         if let (Some(storage), Some(entity_id)) = (&self.soul_storage, entity_id) {
             if let Some(mut entity) = storage.get_entity(entity_id).await? {
@@ -217,8 +192,6 @@ impl MemorySystem {
             }
         }
 
-=======
->>>>>>> origin/main
         Ok(id)
     }
 
@@ -237,10 +210,8 @@ impl MemorySystem {
         let content_field = schema.get_field("content")?;
         let id_field = schema.get_field("id")?;
         let timestamp_field = schema.get_field("timestamp")?;
-<<<<<<< HEAD
         let entity_field = schema.get_field("entity_id")?;
-=======
->>>>>>> origin/main
+        let llm_provider_field = schema.get_field("llm_provider")?;
 
         let reader = index.reader()?;
         let searcher = reader.searcher();
@@ -270,38 +241,34 @@ impl MemorySystem {
                 .get_first(timestamp_field)
                 .and_then(|v| v.as_datetime())
                 .map(|dt| {
-<<<<<<< HEAD
-=======
                     // Convert Tantivy DateTime (Unix timestamp in seconds) to chrono DateTime
->>>>>>> origin/main
                     DateTime::from_timestamp(dt.into_timestamp_secs(), 0)
                         .unwrap_or_else(Utc::now)
                 })
                 .unwrap_or_else(Utc::now);
 
-<<<<<<< HEAD
             let entity_id = retrieved_doc
                 .get_first(entity_field)
                 .and_then(|v| v.as_str())
                 .map(String::from);
 
-=======
->>>>>>> origin/main
+            let preferred_llm_provider = retrieved_doc
+                .get_first(llm_provider_field)
+                .and_then(|v| v.as_str())
+                .map(String::from);
+
             results.push(MemoryRecord {
                 id,
                 content,
                 timestamp,
                 layer,
-<<<<<<< HEAD
                 entity_id,
-=======
->>>>>>> origin/main
+                preferred_llm_provider,
             });
         }
 
         Ok(results)
     }
-<<<<<<< HEAD
 
     /// Get memories linked to a specific entity
     pub async fn get_entity_memories(
@@ -346,6 +313,9 @@ impl MemorySystem {
                         .unwrap_or_else(Utc::now),
                     layer,
                     entity_id: Some(entity_id.to_string()),
+                    preferred_llm_provider: doc.get_first(schema.get_field("llm_provider")?)
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
                 };
 
                 all_memories.push(memory);
@@ -487,8 +457,24 @@ mod tests {
         assert_eq!(memories[0].id, id);
         assert_eq!(memories[0].entity_id, Some("test_entity".to_string()));
     }
-}
-=======
-}
 
->>>>>>> origin/main
+    #[tokio::test]
+    async fn test_memory_storage_with_llm_provider() {
+        let dir = tempdir().unwrap();
+        let memory = MemorySystem::new(dir.path().to_path_buf()).await.unwrap();
+
+        // Store memory with LLM provider preference
+        let id = memory.store_with_provider(
+            MemoryLayer::ShortTerm,
+            "Test memory with provider".to_string(),
+            None,
+            Some("anthropic/claude-3-opus"),
+        ).await.unwrap();
+
+        // Search for memories
+        let memories = memory.search(MemoryLayer::ShortTerm, "Test memory", 10).await.unwrap();
+        assert_eq!(memories.len(), 1);
+        assert_eq!(memories[0].id, id);
+        assert_eq!(memories[0].preferred_llm_provider, Some("anthropic/claude-3-opus".to_string()));
+    }
+}

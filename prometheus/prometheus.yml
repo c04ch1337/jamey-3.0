@@ -1,13 +1,9 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-<<<<<<< HEAD
   external_labels:
     cluster: 'jamey-3.0'
     environment: 'production'
-
-# Alertmanager configuration
-=======
 
 storage:
   tsdb:
@@ -34,33 +30,14 @@ scrape_configs:
 
 rule_files:
   - 'rules/*.yml'
+  - 'alerts.yml'
 
->>>>>>> origin/main
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-<<<<<<< HEAD
-          - localhost:9093
-
-# Load alert rules
-rule_files:
-  - 'alerts.yml'
-
-# Scrape configurations
-scrape_configs:
-  - job_name: 'jamey'
-    static_configs:
-      - targets: ['localhost:3000']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-=======
           - 'alertmanager:9093'
+          - 'localhost:9093'
 
 # Recording rules for aggregation (6-month retention handled by recording rules)
 recording_rules:
@@ -91,4 +68,3 @@ recording_rules:
         # Basic error rate (5xx HTTP responses)
         - record: system:http_5xx_error_rate:5m
           expr: sum(rate(http_requests_total{status=~"5.."}[5m]))
->>>>>>> origin/main

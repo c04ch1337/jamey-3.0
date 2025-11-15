@@ -6,11 +6,7 @@ use jamey_3::conscience::ConscienceEngine;
 use jamey_3::db;
 use jamey_3::memory::MemorySystem;
 use jamey_3::soul::{Emotion, SoulEntity, SoulStorage};
-<<<<<<< HEAD
-use reqwest;
-=======
 use jamey_3::soul::emotion::EmotionType;
->>>>>>> origin/main
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
@@ -26,7 +22,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-<<<<<<< HEAD
     /// Interactive chat with Jamey (standalone mode)
     Chat,
     
@@ -41,11 +36,6 @@ enum Commands {
         api_key: Option<String>,
     },
     
-=======
-    /// Interactive chat with Jamey
-    Chat,
-    
->>>>>>> origin/main
     /// Soul knowledge base commands
     #[command(subcommand)]
     Soul(SoulCommands),
@@ -98,12 +88,9 @@ async fn main() -> Result<()> {
         Commands::Chat => {
             run_chat().await?;
         }
-<<<<<<< HEAD
         Commands::Connect { url, api_key } => {
             run_connect(&url, api_key.as_deref()).await?;
         }
-=======
->>>>>>> origin/main
         Commands::Soul(soul_cmd) => {
             handle_soul_command(soul_cmd).await?;
         }
@@ -334,8 +321,6 @@ async fn handle_connect_command(
     Ok(false)
 }
 
-=======
->>>>>>> origin/main
 async fn handle_soul_command(cmd: SoulCommands) -> Result<()> {
     // Initialize database with migrations
     let pool = db::init_db().await?;
@@ -383,10 +368,6 @@ async fn soul_upsert(storage: &SoulStorage, entity_name: &str, trust: f32) -> Re
 }
 
 async fn soul_record(storage: &SoulStorage, entity_name: &str, emotion_str: &str) -> Result<()> {
-<<<<<<< HEAD
-    let emotion = Emotion::from_str(emotion_str)
-        .ok_or_else(|| anyhow::anyhow!("Invalid emotion: {}. Use: joy, sad, angry, neutral, or love", emotion_str))?;
-=======
     let emotion_type = match emotion_str.to_lowercase().as_str() {
         "joy" => EmotionType::Joy,
         "love" => EmotionType::PaternalLove,
@@ -400,22 +381,17 @@ async fn soul_record(storage: &SoulStorage, entity_name: &str, emotion_str: &str
     
     let emotion = Emotion {
         id: uuid::Uuid::new_v4(),
-        emotion_type,
+        emotion_type: emotion_type.clone(),
         intensity: 0.8,
         target: None,
         timestamp: chrono::Utc::now(),
         duration: 0.0,
     };
->>>>>>> origin/main
     
     let mut entity = storage.get_entity(entity_name)
         .await?
         .unwrap_or_else(|| SoulEntity::new(entity_name.to_string()));
     
-<<<<<<< HEAD
-=======
-    let emotion_type = emotion.emotion_type.clone();
->>>>>>> origin/main
     entity.record_emotion(emotion);
     
     // Update empathy and trust
@@ -423,11 +399,7 @@ async fn soul_record(storage: &SoulStorage, entity_name: &str, emotion_str: &str
     
     storage.upsert_entity(&entity).await?;
     
-<<<<<<< HEAD
-    println!("\n{} Recorded {} for '{}'", emotion.emoji(), emotion.name(), entity_name);
-=======
     println!("\n{} Recorded {} for '{}'", emotion_type.emoji(), emotion_type.name(), entity_name);
->>>>>>> origin/main
     println!("   Updated Trust: {:.2}", entity.trust_score);
     println!("   Empathy: {:.2}\n", entity.empathy_score());
     

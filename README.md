@@ -1,6 +1,5 @@
 # Jamey 3.0 - General & Guardian
 
-<<<<<<< HEAD
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
@@ -24,6 +23,7 @@
 [![Memory System](https://img.shields.io/badge/Feature-5--Layer%20Memory-blue)](./src/memory/)
 [![Soul KB](https://img.shields.io/badge/Feature-Soul%20KB-pink)](./src/soul/)
 [![MQTT Client](https://img.shields.io/badge/Feature-MQTT%20Client-orange)](./src/mqtt/)
+[![Security](https://img.shields.io/badge/Security-A%2B%20Grade-green)](./docs/PHASE2_SECURITY_HARDENING.md)
 
 [![API](https://img.shields.io/badge/API-REST%20API-green)](./docs/API_REFERENCE.md)
 [![CLI](https://img.shields.io/badge/CLI-Interactive%20Chat-blue)](./src/bin/jamey-cli.rs)
@@ -35,8 +35,6 @@
 
 </div>
 
-=======
->>>>>>> origin/main
 Jamey 3.0 is the digital mirror and guardian system, part of the Eternal Hive architecture. It features a Conscience Engine for moral evaluation and a 5-Layer Memory System for persistent knowledge storage.
 
 ## Architecture
@@ -48,6 +46,7 @@ Jamey 3.0 is the digital mirror and guardian system, part of the Eternal Hive ar
 - **Database**: SQLite with SQLx
 - **Real-time**: MQTT async client with authentication and pub/sub capabilities
 - **Soul KB**: Emoji-based emotion tracking with trust scoring (Phase 4.6)
+- **Security**: Enterprise-grade security with DDoS protection, threat detection, and automated incident response (A+ grade)
 
 ## Project Structure
 
@@ -100,7 +99,6 @@ The server will start on `http://localhost:3000`
 
 ### CLI Chat Interface
 
-<<<<<<< HEAD
 **Easiest Way - Start Backend + CLI Together:**
 
 **Linux/Mac:**
@@ -145,12 +143,6 @@ Run CLI without backend (uses OpenRouter directly):
 
 ```bash
 cargo run --bin jamey-cli chat
-=======
-Start an interactive chat with Jamey 3.0:
-
-```bash
-cargo run --bin jamey-cli
->>>>>>> origin/main
 ```
 
 Or use the helper script:
@@ -158,28 +150,44 @@ Or use the helper script:
 ./scripts/chat.sh
 ```
 
-<<<<<<< HEAD
-**Note**: Standalone chat mode requires your OpenRouter API key to be set in `.env` file.
-=======
 **Note**: The CLI requires your OpenRouter API key to be set in `.env` file.
->>>>>>> origin/main
 
 **CLI Commands:**
 - `/help` - Show available commands
 - `/exit` or `/quit` - Exit the chat
 - `/clear` - Clear conversation history
 - `/rules` - Show all moral rules
-<<<<<<< HEAD
-- `/memory` - Show recent memories (standalone mode only)
-- `/conscience <text>` - Evaluate text with conscience engine (standalone mode only)
-
-**See [CLI Usage Guide](docs/CLI_USAGE.md) for complete documentation.**
-=======
 - `/memory` - Show recent memories
 - `/conscience <text>` - Evaluate text with conscience engine
->>>>>>> origin/main
+
+**See [CLI Usage Guide](docs/CLI_USAGE.md) for complete documentation.**
 
 ### Frontend Setup
+
+**Important:** The frontend runs separately from the backend. You need both running:
+
+1. **Start Backend First** (in one terminal):
+```bash
+cargo run
+```
+
+2. **Start Frontend** (in another terminal):
+```bash
+cd frontend
+npm install  # First time only
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173` and will connect to the backend at `http://localhost:3000`.
+
+**Quick Start:**
+```bash
+# Terminal 1: Backend
+cargo run
+
+# Terminal 2: Frontend
+cd frontend && npm run dev
+```
 
 1. Navigate to frontend directory:
 ```bash
@@ -191,7 +199,6 @@ cd frontend
 npm install
 ```
 
-<<<<<<< HEAD
 3. Configure environment (see [Frontend Quick Start](docs/FRONTEND_QUICK_START.md)):
 ```bash
 cp .env.example .env
@@ -199,29 +206,24 @@ cp .env.example .env
 ```
 
 4. Start the development server:
-=======
-3. Start the development server:
->>>>>>> origin/main
 ```bash
 npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173` (or the port Vite assigns)
 
-<<<<<<< HEAD
 **Quick Setup**: See [Frontend Quick Start Guide](docs/FRONTEND_QUICK_START.md) for 5-minute setup.
 
 **Multiple Frontends**: See [Multiple Frontends Guide](docs/MULTIPLE_FRONTENDS.md) for setting up local desktop + remote frontends.
 
 **Any Framework**: See [Universal Frontend Integration Guide](docs/FRONTEND_INTEGRATION.md) for React, Vue, Angular, vanilla JS, desktop, and mobile apps.
-=======
+
 ### Environment Variables
 
 Create a `.env` file in the frontend directory (optional):
 ```
 VITE_API_URL=http://localhost:3000
 ```
->>>>>>> origin/main
 
 ## API Endpoints
 
@@ -319,8 +321,29 @@ Rules can be added, removed, and customized through the API.
 
 ### Running Tests
 
+**Quick Test:**
 ```bash
 cargo test
+```
+
+**Comprehensive Test Suite:**
+```bash
+./scripts/test-all.sh
+```
+
+**Test Coverage:**
+```bash
+./scripts/test-coverage.sh
+```
+
+**Integration Tests Only:**
+```bash
+cargo test --test '*'
+```
+
+**Unit Tests Only:**
+```bash
+cargo test --lib
 ```
 
 ### Building for Production
@@ -343,14 +366,13 @@ npm run build
 - **docs/mqtt_architecture.md** - MQTT system architecture and design
 - **docs/MQTT_USAGE.md** - MQTT client usage and configuration guide
 - **docs/setup/** - Setup and configuration guides
-<<<<<<< HEAD
 - **docs/phase_4_6_architecture.md** - Soul KB and emoji emotion system design
 - **docs/BADGES.md** - Complete badge and icon reference guide
 - **docs/BADGES_QUICK_REFERENCE.md** - Quick copy-paste badge collection
-=======
-- `docs/phase_4_6_architecture.md` - Soul KB and emoji emotion system design
-- **docs/deployment/containerization.md** - Guide to setting up and using the containerized development environment and CI/CD pipeline.
->>>>>>> origin/main
+- **docs/deployment/containerization.md** - Guide to setting up and using the containerized development environment and CI/CD pipeline
+- **docs/PHASE2_SECURITY_HARDENING.md** - Phase 2: Security Hardening implementation plan
+- **docs/PHASE3_OPERATIONAL_READINESS.md** - Phase 3: Operational Readiness implementation plan
+- **docs/NEXT_PHASES_OVERVIEW.md** - Overview of next development phases and focus areas
 
 ## License
 

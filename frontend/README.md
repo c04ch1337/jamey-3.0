@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Jamey 3.0 Frontend
 
 <div align="center">
@@ -154,9 +153,8 @@ The built files will be in `dist/` directory. Deploy these files to your web ser
 **Important**: Set environment variables in your production environment or build system, as Vite embeds them at build time.
 
 ---
-=======
-# React + TypeScript + Vite
->>>>>>> origin/main
+
+## Additional Information
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

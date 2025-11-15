@@ -1,8 +1,5 @@
 use std::env;
-<<<<<<< HEAD
-=======
 use std::time::Duration;
->>>>>>> origin/main
 use crate::mqtt::MqttConfig;
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +33,6 @@ impl Default for SoulConfig {
 impl SoulConfig {
     /// Load soul configuration from environment variables
     pub fn from_env() -> Self {
-<<<<<<< HEAD
         let default_trust = env::var("SOUL_DEFAULT_TRUST")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -73,34 +69,10 @@ impl SoulConfig {
             prune_threshold,
             empathy_threshold,
             auto_record_emotions,
-=======
-        Self {
-            default_trust: env::var("SOUL_DEFAULT_TRUST")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.5),
-            base_decay_rate: env::var("SOUL_BASE_DECAY_RATE")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.01),
-            prune_threshold: env::var("SOUL_PRUNE_THRESHOLD")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.1),
-            empathy_threshold: env::var("SOUL_EMPATHY_THRESHOLD")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.7),
-            auto_record_emotions: env::var("SOUL_AUTO_RECORD")
-                .ok()
-                .map(|v| v == "true")
-                .unwrap_or(true),
->>>>>>> origin/main
         }
     }
 }
 
-<<<<<<< HEAD
 /// Security configuration
 #[derive(Debug, Clone)]
 pub struct SecurityConfig {
@@ -133,7 +105,10 @@ impl Default for SecurityConfig {
             max_rule_description_length: 500,
             min_rule_weight: 0.0,
             max_rule_weight: 100.0,
-=======
+        }
+    }
+}
+
 /// Database configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabaseConfig {
@@ -163,12 +138,10 @@ impl Default for DatabaseConfig {
             enable_wal: true,
             idle_timeout_secs: 600, // 10 minutes
             max_lifetime_secs: 1800, // 30 minutes
->>>>>>> origin/main
         }
     }
 }
 
-<<<<<<< HEAD
 impl SecurityConfig {
     pub fn from_env() -> Self {
         let allowed_origins = env::var("ALLOWED_ORIGINS")
@@ -212,57 +185,6 @@ impl SecurityConfig {
     }
 }
 
-/// Core configuration settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CoreConfig {
-    pub openrouter_api_key: String,
-    pub openrouter_model: String,
-    pub openrouter_api_url: String,
-    pub database_url: Option<String>,
-    pub data_dir: Option<String>,
-}
-
-/// Operational settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OperationalConfig {
-    pub port: u16,
-    pub host: String,
-    pub dev_mode: bool,
-    pub enable_test_features: bool,
-    pub log_level: String,
-}
-
-impl Default for OperationalConfig {
-    fn default() -> Self {
-        Self {
-            port: 3000,
-            host: "0.0.0.0".to_string(),
-            dev_mode: false,
-            enable_test_features: false,
-            log_level: "info".to_string(),
-        }
-    }
-}
-
-/// Phoenix backup system configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PhoenixConfig {
-    pub enabled: bool,
-    pub backup_dir: String,
-    pub encryption_key: String,
-    pub auto_backup_hours: u32,
-    pub max_backups: u32,
-}
-
-impl Default for PhoenixConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            backup_dir: "data/phoenix".to_string(),
-            encryption_key: String::new(),
-            auto_backup_hours: 24,
-            max_backups: 10,
-=======
 impl DatabaseConfig {
     /// Load database configuration from environment variables
     pub fn from_env() -> Self {
@@ -316,6 +238,60 @@ impl DatabaseConfig {
     /// Get max lifetime as Duration
     pub fn max_lifetime(&self) -> Duration {
         Duration::from_secs(self.max_lifetime_secs)
+    }
+}
+
+/// Core configuration settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoreConfig {
+    pub openrouter_api_key: String,
+    pub openrouter_model: String,
+    pub openrouter_api_url: String,
+    pub database_url: Option<String>,
+    pub data_dir: Option<String>,
+}
+
+/// Operational settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationalConfig {
+    pub port: u16,
+    pub host: String,
+    pub dev_mode: bool,
+    pub enable_test_features: bool,
+    pub log_level: String,
+}
+
+impl Default for OperationalConfig {
+    fn default() -> Self {
+        Self {
+            port: 3000,
+            host: "0.0.0.0".to_string(),
+            dev_mode: false,
+            enable_test_features: false,
+            log_level: "info".to_string(),
+        }
+    }
+}
+
+/// Phoenix backup system configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhoenixConfig {
+    pub enabled: bool,
+    pub backup_dir: String,
+    pub encryption_key: String,
+    pub auto_backup_hours: Option<u32>,
+    pub max_backups: u32,
+}
+
+impl Default for PhoenixConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            backup_dir: "data/phoenix".to_string(),
+            encryption_key: String::new(),
+            auto_backup_hours: Some(24),
+            max_backups: 10,
+        }
     }
 }
 
@@ -424,7 +400,6 @@ impl ConsciousnessConfig {
                 .ok()
                 .map(|v| v == "true")
                 .unwrap_or(true),
->>>>>>> origin/main
         }
     }
 }
@@ -432,28 +407,18 @@ impl ConsciousnessConfig {
 /// Application configuration loaded from environment variables
 #[derive(Debug, Clone)]
 pub struct Config {
-<<<<<<< HEAD
     pub core: CoreConfig,
     pub security: SecurityConfig,
     pub soul: SoulConfig,
     pub mqtt: Option<MqttConfig>,
     pub phoenix: Option<PhoenixConfig>,
     pub operational: OperationalConfig,
-=======
-    pub openrouter_api_key: String,
-    pub openrouter_model: String,
-    pub openrouter_api_url: String,
-    pub database_url: Option<String>,
-    pub mqtt: Option<MqttConfig>,
-    pub soul: SoulConfig,
     pub consciousness: ConsciousnessConfig,
     pub database: DatabaseConfig,
->>>>>>> origin/main
 }
 
 impl Config {
     /// Load configuration from environment variables
-<<<<<<< HEAD
     pub fn from_env() -> anyhow::Result<Option<Self>> {
         // Load .env file if it exists
         if let Ok(path) = dotenvy::dotenv() {
@@ -485,6 +450,12 @@ impl Config {
         let operational = Self::load_operational_config();
         tracing::debug!("Operational config loaded: {:?}", operational);
 
+        let consciousness = ConsciousnessConfig::from_env();
+        tracing::debug!("Consciousness config loaded");
+
+        let database = DatabaseConfig::from_env();
+        tracing::debug!("Database config loaded: {:?}", database);
+
         Ok(Some(Config {
             core,
             security,
@@ -492,6 +463,8 @@ impl Config {
             mqtt,
             phoenix,
             operational,
+            consciousness,
+            database,
         }))
     }
 
@@ -606,8 +579,8 @@ impl Config {
                     tracing::error!("Phoenix validation failed: encryption key missing");
                     anyhow::bail!("PHOENIX_ENCRYPTION_KEY is required when Phoenix backup is enabled");
                 }
-                if phoenix.auto_backup_hours == 0 {
-                    tracing::warn!("Phoenix auto_backup_hours is 0 - automatic backups disabled");
+                if phoenix.auto_backup_hours.is_none() || phoenix.auto_backup_hours == Some(0) {
+                    tracing::warn!("Phoenix auto_backup_hours is 0 or None - automatic backups disabled");
                 }
                 tracing::debug!("Phoenix configuration validated successfully");
             }
@@ -638,70 +611,10 @@ impl Config {
         }
 
         tracing::debug!("All configuration validated successfully");
-=======
-    /// Returns None if OPENROUTER_API_KEY is not set (LLM features will be unavailable)
-    pub fn from_env() -> anyhow::Result<Option<Self>> {
-        // Load .env file if it exists (dotenvy handles this)
-        dotenvy::dotenv().ok();
-
-        // OpenRouter API key is optional - only needed for LLM features
-        let openrouter_api_key = match env::var("OPENROUTER_API_KEY") {
-            Ok(key) if !key.is_empty() => key,
-            _ => {
-                tracing::warn!("OPENROUTER_API_KEY not set. LLM features will be unavailable.");
-                tracing::warn!("Create a .env file with OPENROUTER_API_KEY=your-key to enable LLM features.");
-                return Ok(None);
-            }
-        };
-
-        let openrouter_model = env::var("OPENROUTER_MODEL")
-            .unwrap_or_else(|_| "deepseek/deepseek-chat".to_string());
-
-        let openrouter_api_url = env::var("OPENROUTER_API_URL")
-            .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
-
-        let database_url = env::var("DATABASE_URL").ok();
-
-        // Try to load MQTT configuration (optional)
-        let mqtt = MqttConfig::from_env().ok();
-        if mqtt.is_none() {
-            tracing::info!("MQTT configuration not found or incomplete. MQTT features will be unavailable.");
-        }
-
-        Ok(Some(Config {
-            openrouter_api_key,
-            openrouter_model,
-            openrouter_api_url,
-            database_url,
-            mqtt,
-            soul: SoulConfig::from_env(),
-            consciousness: ConsciousnessConfig::from_env(),
-            database: DatabaseConfig::from_env(),
-        }))
-    }
-
-    /// Load configuration from environment variables (required)
-    /// Fails if OPENROUTER_API_KEY is not set
-    pub fn from_env_required() -> anyhow::Result<Self> {
-        Self::from_env()?
-            .ok_or_else(|| anyhow::anyhow!("OPENROUTER_API_KEY environment variable is required. Create a .env file with your API key."))
-    }
-
-    /// Validate that required configuration is present
-    pub fn validate(&self) -> anyhow::Result<()> {
-        if self.openrouter_api_key.is_empty() {
-            anyhow::bail!("OPENROUTER_API_KEY cannot be empty");
-        }
-        if self.openrouter_model.is_empty() {
-            anyhow::bail!("OPENROUTER_MODEL cannot be empty");
-        }
->>>>>>> origin/main
         Ok(())
     }
 }
 
-<<<<<<< HEAD
-=======
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -762,5 +675,3 @@ mod tests {
         assert_eq!(config.max_lifetime(), Duration::from_secs(1800));
     }
 }
-
->>>>>>> origin/main

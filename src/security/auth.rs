@@ -52,11 +52,12 @@ impl From<jsonwebtoken::errors::Error> for AuthError {
     }
 }
 
-/// JWT authentication middleware
+/// JWT authentication middleware with secret rotation support
 pub struct JwtAuth {
     encoding_key: EncodingKey,
-    decoding_key: DecodingKey,
+    decoding_keys: Vec<DecodingKey>, // Support multiple keys for rotation
     validation: Validation,
+    current_secret_version: u32,
 }
 
 impl JwtAuth {
@@ -72,13 +73,57 @@ impl JwtAuth {
 
         let encoding_key = EncodingKey::from_secret(secret.as_bytes());
         let decoding_key = DecodingKey::from_secret(secret.as_bytes());
+        
+        // Support previous secret for rotation (optional)
+        let mut decoding_keys = vec![decoding_key.clone()];
+        if let Ok(previous_secret) = env::var("JWT_SECRET_PREVIOUS") {
+            if previous_secret.len() >= 32 {
+                let prev_decoding_key = DecodingKey::from_secret(previous_secret.as_bytes());
+                decoding_keys.push(prev_decoding_key);
+                info!("JWT secret rotation: Previous secret loaded for backward compatibility");
+            }
+        }
+        
         let mut validation = Validation::default();
         validation.validate_exp = true;
 
         Ok(Self {
             encoding_key,
-            decoding_key,
+            decoding_keys,
             validation,
+            current_secret_version: 1,
+        })
+    }
+
+    /// Rotate JWT secret (supports grace period with old secret)
+    pub fn rotate_secret(new_secret: &str, previous_secret: Option<&str>) -> Result<Self, AuthError> {
+        if new_secret.len() < 32 {
+            error!("New JWT_SECRET is too short. Minimum 32 characters required for security.");
+            return Err(AuthError::SecretNotConfigured);
+        }
+
+        let encoding_key = EncodingKey::from_secret(new_secret.as_bytes());
+        let decoding_key = DecodingKey::from_secret(new_secret.as_bytes());
+        
+        let mut decoding_keys = vec![decoding_key.clone()];
+        
+        // Add previous secret for grace period
+        if let Some(prev_secret) = previous_secret {
+            if prev_secret.len() >= 32 {
+                let prev_decoding_key = DecodingKey::from_secret(prev_secret.as_bytes());
+                decoding_keys.push(prev_decoding_key);
+                info!("JWT secret rotation: Previous secret included for grace period");
+            }
+        }
+        
+        let mut validation = Validation::default();
+        validation.validate_exp = true;
+
+        Ok(Self {
+            encoding_key,
+            decoding_keys,
+            validation,
+            current_secret_version: 2,
         })
     }
 
@@ -101,10 +146,17 @@ impl JwtAuth {
             .map_err(|_| AuthError::InvalidToken)
     }
 
-    /// Validate a JWT token and return the claims
+    /// Validate a JWT token and return the claims (tries all available secrets for rotation support)
     pub fn validate_token(&self, token: &str) -> Result<JwtClaims, AuthError> {
-        let token_data = decode::<JwtClaims>(token, &self.decoding_key, &self.validation)?;
-        Ok(token_data.claims)
+        // Try current secret first
+        for decoding_key in &self.decoding_keys {
+            if let Ok(token_data) = decode::<JwtClaims>(token, decoding_key, &self.validation) {
+                return Ok(token_data.claims);
+            }
+        }
+        
+        // If all secrets fail, return error
+        Err(AuthError::InvalidToken)
     }
 
     /// Extract token from authorization header

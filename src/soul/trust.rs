@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-use super::emotion::Emotion;
-=======
 use super::emotion::EmotionType;
->>>>>>> origin/main
 use std::collections::HashMap;
 
 /// Trust calculator for soul entities
@@ -11,11 +7,7 @@ pub struct TrustCalculator;
 impl TrustCalculator {
     /// Calculate empathy score from emotion counts
     /// Returns a value between 0.0 and 1.0
-<<<<<<< HEAD
-    pub fn calculate_empathy(emotions: &HashMap<Emotion, u32>) -> f32 {
-=======
     pub fn calculate_empathy(emotions: &HashMap<EmotionType, u32>) -> f32 {
->>>>>>> origin/main
         if emotions.is_empty() {
             return 0.5; // Neutral empathy
         }
@@ -26,10 +18,6 @@ impl TrustCalculator {
         }
         
         let mut weighted_sum = 0.0;
-<<<<<<< HEAD
-        for (emotion, count) in emotions {
-            let weight = emotion.score();
-=======
         for (emotion_type, count) in emotions {
             let weight = match emotion_type {
                 EmotionType::PaternalLove => 1.0,
@@ -41,7 +29,6 @@ impl TrustCalculator {
                 EmotionType::Worry => 0.3,
                 EmotionType::General(_) => 0.5,
             };
->>>>>>> origin/main
             weighted_sum += weight * (*count as f32);
         }
         
@@ -62,11 +49,7 @@ impl TrustCalculator {
     
     /// Calculate decay rate based on emotional state
     /// Positive emotions = slower decay, negative = faster decay
-<<<<<<< HEAD
-    pub fn calculate_decay_rate(emotions: &HashMap<Emotion, u32>) -> f32 {
-=======
     pub fn calculate_decay_rate(emotions: &HashMap<EmotionType, u32>) -> f32 {
->>>>>>> origin/main
         let empathy = Self::calculate_empathy(emotions);
         
         // Base decay rate

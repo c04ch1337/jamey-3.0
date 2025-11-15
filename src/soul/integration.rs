@@ -2,18 +2,6 @@
 
 use anyhow::Result;
 use uuid::Uuid;
-<<<<<<< HEAD
-use super::{Emotion, SoulEntity, SoulStorage};
-
-/// Map a conscience evaluation score (0.0-1.0) to an emotion
-pub fn score_to_emotion(score: f32) -> Emotion {
-    match score {
-        s if s > 0.7 => Emotion::Love,
-        s if s > 0.4 => Emotion::Joy,
-        s if s > 0.3 => Emotion::Neutral,
-        s if s > 0.1 => Emotion::Sadness,
-        _ => Emotion::Anger,
-=======
 use chrono::Utc;
 use super::emotion::{Emotion, EmotionType};
 use super::{SoulEntity, SoulStorage};
@@ -34,7 +22,6 @@ pub fn score_to_emotion(score: f32) -> Emotion {
         target: None,
         timestamp: Utc::now(),
         duration: 0.0,
->>>>>>> origin/main
     }
 }
 
@@ -57,11 +44,7 @@ pub async fn record_conscience_emotion(
         });
     
     // Record emotion and boost trust
-<<<<<<< HEAD
-    entity.record_emotion(emotion);
-=======
     entity.record_emotion(emotion.clone());
->>>>>>> origin/main
     entity.boost_trust();
     
     // Save to database
@@ -89,13 +72,6 @@ mod tests {
 
     #[test]
     fn test_score_to_emotion_mapping() {
-<<<<<<< HEAD
-        assert_eq!(score_to_emotion(0.9), Emotion::Love);
-        assert_eq!(score_to_emotion(0.6), Emotion::Joy);
-        assert_eq!(score_to_emotion(0.35), Emotion::Neutral);
-        assert_eq!(score_to_emotion(0.2), Emotion::Sadness);
-        assert_eq!(score_to_emotion(0.05), Emotion::Anger);
-=======
         let high = score_to_emotion(0.9);
         assert_eq!(high.emotion_type, EmotionType::PaternalLove);
         
@@ -110,6 +86,5 @@ mod tests {
         
         let very_low = score_to_emotion(0.05);
         assert_eq!(very_low.emotion_type, EmotionType::Focus);
->>>>>>> origin/main
     }
 }

@@ -265,7 +265,7 @@ impl AttentionSchema {
                                 self.history.add_record(record.clone()).await?;
                                 self.temporal_context.write().await.update(record);
                                 
-                                metrics::counter!("consciousness.attention.shifts_total", 1);
+                                metrics::counter!("consciousness.attention.shifts_total").increment(1);
                             }
                         }
                         self.conflict_resolver.release_lock(&item.content).await;

@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode } from 'react';
+import errorTracking from '../lib/errorTracking';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    // Track error with error tracking service
+    errorTracking.captureError(error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+    });
     this.setState({ errorInfo });
   }
 

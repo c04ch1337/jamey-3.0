@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-use sqlx::{sqlite::{SqliteConnectOptions, SqlitePoolOptions}, SqlitePool};
-use std::str::FromStr;
-use tracing::info;
-
-/// Get the database path, creating the data directory if needed
-fn get_db_path() -> anyhow::Result<std::path::PathBuf> {
-=======
 use sqlx::{sqlite::{SqliteConnectOptions, SqlitePoolOptions}, SqlitePool, Row};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
@@ -67,10 +59,8 @@ impl DbMetrics {
     }
 }
 
-
 /// Get the database path, creating the data directory if needed
 pub fn get_db_path() -> anyhow::Result<std::path::PathBuf> {
->>>>>>> origin/main
     // Get the current directory
     let current_dir = std::env::current_dir()?;
     let data_dir = current_dir.join("data");
@@ -83,18 +73,8 @@ pub fn get_db_path() -> anyhow::Result<std::path::PathBuf> {
 }
 
 /// Initialize the SQLite database and run migrations
+/// Convenience function that uses default configuration
 pub async fn init_db() -> anyhow::Result<SqlitePool> {
-<<<<<<< HEAD
-    let db_path = get_db_path()?;
-    info!("Connecting to database at: {}", db_path.display());
-
-    // Use SqliteConnectOptions for more control
-    let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path.display()))?
-        .create_if_missing(true);
-
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-=======
     init_db_with_config(DatabaseConfig::default()).await
 }
 
@@ -121,16 +101,10 @@ pub async fn init_db_with_config(config: DatabaseConfig) -> anyhow::Result<Sqlit
         .acquire_timeout(config.connect_timeout())
         .idle_timeout(config.idle_timeout())
         .max_lifetime(config.max_lifetime())
->>>>>>> origin/main
         .connect_with(connect_options)
         .await?;
 
     // Run migrations
-<<<<<<< HEAD
-    sqlx::migrate!("./migrations").run(&pool).await?;
-
-    info!("Database initialized and migrations applied");
-=======
     let migrate_start = Instant::now();
     sqlx::migrate!("./migrations").run(&pool).await?;
     let migrate_duration = migrate_start.elapsed();
@@ -159,19 +133,12 @@ pub async fn init_db_with_config(config: DatabaseConfig) -> anyhow::Result<Sqlit
         .await?;
 
     info!("Database performance optimizations applied");
->>>>>>> origin/main
     Ok(pool)
 }
 
 /// Get a database connection pool
+/// Convenience function that uses default configuration
 pub async fn get_pool() -> anyhow::Result<SqlitePool> {
-<<<<<<< HEAD
-    let db_path = get_db_path()?;
-    let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path.display()))?;
-    
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-=======
     get_pool_with_config(DatabaseConfig::default()).await
 }
 
@@ -184,14 +151,10 @@ pub async fn get_pool_with_config(config: DatabaseConfig) -> anyhow::Result<Sqli
     let pool = SqlitePoolOptions::new()
         .max_connections(config.max_connections)
         .acquire_timeout(config.connect_timeout())
->>>>>>> origin/main
         .connect_with(connect_options)
         .await?;
     Ok(pool)
 }
-
-<<<<<<< HEAD
-=======
 /// Execute a query with performance monitoring
 pub async fn execute_with_metrics<T>(
     pool: &SqlitePool,
@@ -310,5 +273,3 @@ where
         }
     }
 }
-
->>>>>>> origin/main

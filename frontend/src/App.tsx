@@ -1,15 +1,6 @@
-<<<<<<< HEAD
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { evaluateAction, getRules, addRule, type MoralRule, type AddRuleRequest } from './api/client'
-import './App.css'
-
-function App() {
-  const [action, setAction] = useState('')
-=======
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { evaluateAction, getRules, addRule, type AddRuleRequest, AddRuleRequestSchema } from './api/client'
+import { evaluateAction, getRules, addRule, type AddRuleRequest, AddRuleRequestSchema, type MoralRule } from './api/client'
 import { z } from 'zod'
 import type { AxiosError } from 'axios'
 import './App.css'
@@ -47,18 +38,11 @@ const RuleWeightSchema = z.number()
 function App() {
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
->>>>>>> origin/main
   const [newRule, setNewRule] = useState<AddRuleRequest>({
     name: '',
     description: '',
     weight: 8.0,
   })
-<<<<<<< HEAD
-  const queryClient = useQueryClient()
-
-  // Fetch rules
-  const { data: rules = [], isLoading: rulesLoading } = useQuery({
-=======
   const [ruleError, setRuleError] = useState<string | null>(null)
   const [ruleSuccess, setRuleSuccess] = useState(false)
   const queryClient = useQueryClient()
@@ -70,7 +54,6 @@ function App() {
     isError: rulesError,
     error: rulesErrorDetails 
   } = useQuery({
->>>>>>> origin/main
     queryKey: ['rules'],
     queryFn: getRules,
   })
@@ -79,9 +62,6 @@ function App() {
   const evaluateMutation = useMutation({
     mutationFn: evaluateAction,
     onSuccess: () => {
-<<<<<<< HEAD
-      // Optionally refetch rules or other data
-=======
       // Clear any previous errors
       setActionError(null)
     },
@@ -91,7 +71,6 @@ function App() {
           ? error.message
           : 'Failed to evaluate action. Please try again.'
       )
->>>>>>> origin/main
     },
   })
 
@@ -101,20 +80,6 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
       setNewRule({ name: '', description: '', weight: 8.0 })
-<<<<<<< HEAD
-    },
-  })
-
-  const handleEvaluate = () => {
-    if (action.trim()) {
-      evaluateMutation.mutate(action)
-    }
-  }
-
-  const handleAddRule = () => {
-    if (newRule.name && newRule.description) {
-      addRuleMutation.mutate(newRule)
-=======
       setRuleError(null)
       setRuleSuccess(true)
       // Clear success message after 3 seconds
@@ -200,7 +165,6 @@ function App() {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       handleAddRule()
->>>>>>> origin/main
     }
   }
 
@@ -212,28 +176,6 @@ function App() {
       </header>
 
       <main className="app-main">
-<<<<<<< HEAD
-        <section className="evaluation-section">
-          <h2>Evaluate Action</h2>
-          <div className="input-group">
-            <textarea
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              placeholder="Enter an action to evaluate..."
-              rows={4}
-            />
-            <button onClick={handleEvaluate} disabled={!action.trim() || evaluateMutation.isPending}>
-              {evaluateMutation.isPending ? 'Evaluating...' : 'Evaluate'}
-            </button>
-          </div>
-
-          {evaluateMutation.isSuccess && (
-            <div className="result">
-              <h3>Evaluation Result</h3>
-              <p><strong>Action:</strong> {evaluateMutation.data.action}</p>
-              <p><strong>Moral Score:</strong> {evaluateMutation.data.score.toFixed(2)}</p>
-              <div className="score-bar">
-=======
         <section className="evaluation-section" aria-labelledby="evaluation-heading">
           <h2 id="evaluation-heading">Evaluate Action</h2>
           <div className="input-group">
@@ -278,7 +220,6 @@ function App() {
               <p><strong>Action:</strong> {evaluateMutation.data.action}</p>
               <p><strong>Moral Score:</strong> {evaluateMutation.data.score.toFixed(2)}</p>
               <div className="score-bar" role="progressbar" aria-valuenow={evaluateMutation.data.score} aria-valuemin={0} aria-valuemax={10} aria-label={`Moral score: ${evaluateMutation.data.score.toFixed(2)} out of 10`}>
->>>>>>> origin/main
                 <div
                   className="score-fill"
                   style={{ width: `${Math.min(100, (evaluateMutation.data.score / 10) * 100)}%` }}
@@ -287,11 +228,6 @@ function App() {
             </div>
           )}
 
-<<<<<<< HEAD
-          {evaluateMutation.isError && (
-            <div className="error">
-              Error evaluating action. Please try again.
-=======
           {actionError && (
             <div className="error" role="alert" aria-live="assertive">
               {actionError}
@@ -307,53 +243,10 @@ function App() {
               {evaluateMutation.error && 'response' in evaluateMutation.error && (
                 <span> (Status: {(evaluateMutation.error as AxiosError).response?.status})</span>
               )}
->>>>>>> origin/main
             </div>
           )}
         </section>
 
-<<<<<<< HEAD
-        <section className="rules-section">
-          <h2>Moral Rules</h2>
-          {rulesLoading ? (
-            <p>Loading rules...</p>
-          ) : (
-            <div className="rules-list">
-              {rules.map((rule) => (
-                <div key={rule.name} className="rule-card">
-                  <h3>{rule.name}</h3>
-                  <p>{rule.description}</p>
-                  <span className="weight">Weight: {rule.weight}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="add-rule-form">
-            <h3>Add New Rule</h3>
-            <input
-              type="text"
-              placeholder="Rule name"
-              value={newRule.name}
-              onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Description"
-              value={newRule.description}
-              onChange={(e) => setNewRule({ ...newRule, description: e.target.value })}
-            />
-            <input
-              type="number"
-              placeholder="Weight"
-              value={newRule.weight}
-              onChange={(e) => setNewRule({ ...newRule, weight: parseFloat(e.target.value) || 0 })}
-              step="0.1"
-            />
-            <button onClick={handleAddRule} disabled={addRuleMutation.isPending}>
-              {addRuleMutation.isPending ? 'Adding...' : 'Add Rule'}
-            </button>
-=======
         <section className="rules-section" aria-labelledby="rules-heading">
           <h2 id="rules-heading">Moral Rules</h2>
           {rulesLoading ? (
@@ -487,7 +380,6 @@ function App() {
             <div id="add-rule-button-description" className="visually-hidden">
               Click to add a new moral rule to the system (or press Ctrl+Enter)
             </div>
->>>>>>> origin/main
           </div>
         </section>
       </main>

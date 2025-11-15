@@ -1,6 +1,6 @@
 use metrics::{Counter, Gauge, Histogram, Key, KeyName, Unit};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::OnceCell;
 use tracing::{info, warn};
 
@@ -30,14 +30,21 @@ pub fn record_http_request(
     status: u16,
     duration: std::time::Duration,
 ) {
-    let labels = [
-        ("method", method.to_string()),
-        ("path", path.to_string()),
-        ("status", status.to_string()),
-    ];
+    metrics::counter!(
+        "http_requests_total",
+        "method" => method.to_string(),
+        "path" => path.to_string(),
+        "status" => status.to_string(),
+    )
+    .increment(1);
 
-    metrics::increment_counter!("http_requests_total", &labels);
-    metrics::histogram!("http_request_duration_seconds", duration.as_secs_f64(), &labels);
+    metrics::histogram!(
+        "http_request_duration_seconds",
+        "method" => method.to_string(),
+        "path" => path.to_string(),
+        "status" => status.to_string(),
+    )
+    .record(duration.as_secs_f64());
 }
 
 /// Record memory system metrics
@@ -46,13 +53,19 @@ pub fn record_memory_metrics(
     operation: &str,
     duration: std::time::Duration,
 ) {
-    let labels = [
-        ("layer", layer.to_string()),
-        ("operation", operation.to_string()),
-    ];
+    metrics::counter!(
+        "memory_operations_total",
+        "layer" => layer.to_string(),
+        "operation" => operation.to_string(),
+    )
+    .increment(1);
 
-    metrics::increment_counter!("memory_operations_total", &labels);
-    metrics::histogram!("memory_operation_duration_seconds", duration.as_secs_f64(), &labels);
+    metrics::histogram!(
+        "memory_operation_duration_seconds",
+        "layer" => layer.to_string(),
+        "operation" => operation.to_string(),
+    )
+    .record(duration.as_secs_f64());
 }
 
 /// Record MQTT metrics
@@ -61,13 +74,13 @@ pub fn record_mqtt_metrics(
     operation: &str,
     success: bool,
 ) {
-    let labels = [
-        ("topic", topic.to_string()),
-        ("operation", operation.to_string()),
-        ("success", success.to_string()),
-    ];
-
-    metrics::increment_counter!("mqtt_operations_total", &labels);
+    metrics::counter!(
+        "mqtt_operations_total",
+        "topic" => topic.to_string(),
+        "operation" => operation.to_string(),
+        "success" => success.to_string(),
+    )
+    .increment(1);
 }
 
 /// Record system metrics
@@ -76,14 +89,18 @@ pub fn record_system_metrics(
     disk_free_bytes: u64,
     uptime_seconds: u64,
 ) {
-    metrics::gauge!("system_memory_bytes", memory_bytes as f64);
-    metrics::gauge!("system_disk_free_bytes", disk_free_bytes as f64);
-    metrics::gauge!("system_uptime_seconds", uptime_seconds as f64);
+    metrics::gauge!("system_memory_bytes").set(memory_bytes as f64);
+    metrics::gauge!("system_disk_free_bytes").set(disk_free_bytes as f64);
+    metrics::gauge!("system_uptime_seconds").set(uptime_seconds as f64);
 }
 
 /// Record memory index size
 pub fn record_memory_index_size(layer: &str, size_bytes: u64) {
-    metrics::gauge!("memory_index_size_bytes", size_bytes as f64, &[("layer", layer)]);
+    metrics::gauge!(
+        "memory_index_size_bytes",
+        "layer" => layer.to_string(),
+    )
+    .set(size_bytes as f64);
 }
 
 /// Record backup operation metrics
@@ -93,17 +110,19 @@ pub fn record_backup_operation(
     duration: Option<Duration>,
     size_bytes: Option<u64>,
 ) {
-    metrics::increment_counter!("backup_operations_total", &[
-        ("status", status),
-        ("component", component),
-    ]);
+    metrics::counter!(
+        "backup_operations_total",
+        "status" => status.to_string(),
+        "component" => component.to_string(),
+    )
+    .increment(1);
     
     if let Some(dur) = duration {
-        metrics::histogram!("backup_duration_seconds", dur.as_secs_f64(), &[]);
+        metrics::histogram!("backup_duration_seconds").record(dur.as_secs_f64());
     }
     
     if let Some(size) = size_bytes {
-        metrics::gauge!("backup_size_bytes", size as f64, &[]);
+        metrics::gauge!("backup_size_bytes").set(size as f64);
     }
 }
 

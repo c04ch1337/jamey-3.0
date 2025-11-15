@@ -1,12 +1,9 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-<<<<<<< HEAD
 use tracing::info;
 
-use crate::soul::{Emotion, SoulStorage};
-=======
->>>>>>> origin/main
+use crate::soul::SoulStorage;
 
 /// A moral rule with a weight and description
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,15 +16,11 @@ pub struct MoralRule {
 /// Conscience Engine that evaluates actions against moral rules
 #[derive(Clone)]
 pub struct ConscienceEngine {
-<<<<<<< HEAD
     /// Thread-safe storage of moral rules
     rules: Arc<DashMap<String, MoralRule>>,
 
     /// Optional Soul KB integration
     soul_storage: Option<Arc<SoulStorage>>,
-=======
-    rules: Arc<DashMap<String, MoralRule>>,
->>>>>>> origin/main
 }
 
 impl ConscienceEngine {
@@ -54,7 +47,6 @@ impl ConscienceEngine {
             },
         );
 
-<<<<<<< HEAD
         Self { 
             rules,
             soul_storage: None,
@@ -65,9 +57,6 @@ impl ConscienceEngine {
     pub fn with_soul_storage(mut self, storage: Arc<SoulStorage>) -> Self {
         self.soul_storage = Some(storage);
         self
-=======
-        Self { rules }
->>>>>>> origin/main
     }
 
     /// Add a new moral rule
@@ -85,12 +74,8 @@ impl ConscienceEngine {
         self.rules.iter().map(|entry| entry.value().clone()).collect()
     }
 
-<<<<<<< HEAD
-    /// Basic evaluation against moral rules
-=======
     /// Evaluate an action against all moral rules
     /// Returns a score where higher is more moral
->>>>>>> origin/main
     pub fn evaluate(&self, action: &str) -> f32 {
         let action_lower = action.to_lowercase();
         let mut score = 0.0;
@@ -114,25 +99,25 @@ impl ConscienceEngine {
 
         score
     }
-<<<<<<< HEAD
 
     /// Evaluate action and record emotion in Soul KB if entity provided
     pub async fn evaluate_with_soul(
         &self,
         action: &str,
         entity_name: Option<&str>,
-    ) -> anyhow::Result<(f32, Option<Emotion>)> {
+    ) -> anyhow::Result<(f32, Option<crate::soul::emotion::EmotionType>)> {
         let score = self.evaluate(action);
 
-        // Map score to emotion
+        // Map score to emotion type
+        use crate::soul::emotion::EmotionType;
         let emotion = if score > 8.0 {
-            Some(Emotion::Joy)
+            Some(EmotionType::Joy)
         } else if score > 5.0 {
-            Some(Emotion::Neutral)
+            Some(EmotionType::Calm)
         } else if score > 2.0 {
-            Some(Emotion::Sadness)
+            Some(EmotionType::Worry)
         } else {
-            Some(Emotion::Anger)
+            Some(EmotionType::Worry) // Low score = concern
         };
 
         // Record to Soul KB if entity provided
@@ -147,15 +132,16 @@ impl ConscienceEngine {
             );
 
             if let Some(mut entity) = storage.get_entity(name).await? {
-                entity.record_emotion(em, score / 10.0);
+                use std::collections::HashMap;
+                let mut emotions = HashMap::new();
+                emotions.insert(em.clone(), 1);
+                entity.emotions = emotions;
                 storage.upsert_entity(&entity).await?;
             }
         }
 
         Ok((score, emotion))
     }
-=======
->>>>>>> origin/main
 }
 
 impl Default for ConscienceEngine {
@@ -167,11 +153,8 @@ impl Default for ConscienceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-<<<<<<< HEAD
     use tempfile::tempdir;
     use crate::db::init_db;
-=======
->>>>>>> origin/main
 
     #[test]
     fn test_default_rules() {
@@ -186,7 +169,6 @@ mod tests {
         let score = engine.evaluate("I will help someone in need");
         assert!(score >= 0.0);
     }
-<<<<<<< HEAD
 
     #[tokio::test]
     async fn test_evaluate_with_soul() {
@@ -211,7 +193,3 @@ mod tests {
         assert!(emotion.is_some());
     }
 }
-=======
-}
-
->>>>>>> origin/main

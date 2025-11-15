@@ -220,15 +220,9 @@ impl PhoenixVault {
         Ok(())
     }
 
-    // Helper methods implemented in backup.rs and restore.rs
-    async fn backup_database(&self, backup_path: &PathBuf, manifest: &mut BackupManifest) -> Result<(), PhoenixError>;
-    async fn backup_memory_indices(&self, backup_path: &PathBuf, manifest: &mut BackupManifest) -> Result<(), PhoenixError>;
-    async fn restore_database(&self, backup_path: &PathBuf) -> Result<(), PhoenixError>;
-    async fn restore_memory_indices(&self, backup_path: &PathBuf) -> Result<(), PhoenixError>;
-    async fn verify_restoration(&self, manifest: &BackupManifest) -> Result<(), PhoenixError>;
-    async fn save_manifest(&self, backup_path: &PathBuf, manifest: &BackupManifest) -> Result<(), PhoenixError>;
-    async fn load_manifest(&self, backup_path: &PathBuf) -> Result<BackupManifest, PhoenixError>;
-    async fn cleanup_old_backups(&self) -> Result<(), PhoenixError>;
+    // Helper methods are implemented for PhoenixVault in:
+    // - phoenix::backup (database + memory index backup + manifest IO + cleanup)
+    // - phoenix::restore (database + memory index restore + verification)
 }
 
 #[cfg(test)]

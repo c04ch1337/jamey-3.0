@@ -1,8 +1,8 @@
 use anyhow::Result;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
-use opentelemetry::sdk::{trace, Resource};
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::{trace, Resource};
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
@@ -27,7 +27,7 @@ pub fn init_telemetry() -> Result<()> {
                 "jamey-3-backend",
             )])),
         )
-        .install_batch(opentelemetry::runtime::Tokio)?;
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
     // Create a tracing layer with the configured tracer
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);

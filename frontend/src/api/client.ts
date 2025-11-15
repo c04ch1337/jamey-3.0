@@ -1,37 +1,12 @@
-<<<<<<< HEAD
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { z } from 'zod';
+import errorTracking from '../lib/errorTracking';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY;
 // Support both x-api-key and Authorization: Bearer formats
 // Set VITE_API_KEY_FORMAT=bearer to use Authorization: Bearer header instead
 const API_KEY_FORMAT = import.meta.env.VITE_API_KEY_FORMAT || 'x-api-key';
-
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    // Include API key if available (supports both x-api-key and Authorization: Bearer formats)
-    ...(API_KEY && (API_KEY_FORMAT === 'bearer' 
-      ? { 'Authorization': `Bearer ${API_KEY}` }
-      : { 'x-api-key': API_KEY })),
-  },
-});
-
-// Add request interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      console.error('Authentication failed. Please check your API key.');
-    } else if (error.response?.status === 429) {
-      console.error('Rate limit exceeded. Please slow down your requests.');
-    }
-=======
-import axios, { AxiosError } from 'axios';
-import { z } from 'zod';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Request timeout (30 seconds)
 const REQUEST_TIMEOUT = 30000;
@@ -69,6 +44,10 @@ export const apiClient = axios.create({
   timeout: REQUEST_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
+    // Include API key if available (supports both x-api-key and Authorization: Bearer formats)
+    ...(API_KEY && (API_KEY_FORMAT === 'bearer' 
+      ? { 'Authorization': `Bearer ${API_KEY}` }
+      : { 'x-api-key': API_KEY })),
   },
 });
 
@@ -85,7 +64,7 @@ const generateTraceParent = (): string => {
 // Request interceptor - can add auth tokens here if needed
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token if available
+    // Add auth token from localStorage if available (takes precedence over env API key)
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -112,29 +91,57 @@ apiClient.interceptors.response.use(
       if (status === 401) {
         // Unauthorized - clear token if exists
         localStorage.removeItem('auth_token');
-        console.error('Unauthorized - authentication required');
+        errorTracking.captureMessage('Unauthorized - authentication required', 'error', {
+          status,
+          path: error.config?.url,
+        });
       } else if (status === 403) {
-        console.error('Forbidden - insufficient permissions');
+        errorTracking.captureMessage('Forbidden - insufficient permissions', 'error', {
+          status,
+          path: error.config?.url,
+        });
       } else if (status >= 500) {
-        console.error('Server error - please try again later');
+        errorTracking.captureError(
+          new Error(`Server error: ${data?.message || error.message}`),
+          { status, path: error.config?.url, data }
+        );
       } else if (status === 404) {
-        console.error('Resource not found');
+        errorTracking.captureMessage('Resource not found', 'warning', {
+          status,
+          path: error.config?.url,
+        });
+      } else if (status === 429) {
+        errorTracking.captureMessage('Rate limit exceeded', 'warning', {
+          status,
+          path: error.config?.url,
+        });
       } else {
-        console.error(`API Error (${status}):`, data?.message || error.message);
+        errorTracking.captureError(
+          new Error(`API Error (${status}): ${data?.message || error.message}`),
+          { status, path: error.config?.url, data }
+        );
       }
     } else if (error.request) {
       // Request made but no response received
       if (error.code === 'ECONNABORTED') {
-        console.error('Request timeout - server took too long to respond');
+        errorTracking.captureError(
+          new Error('Request timeout - server took too long to respond'),
+          { code: error.code, path: error.config?.url }
+        );
       } else {
-        console.error('Network error - unable to reach server');
+        errorTracking.captureError(
+          new Error('Network error - unable to reach server'),
+          { code: error.code, path: error.config?.url }
+        );
       }
     } else {
       // Error setting up request
-      console.error('Request setup error:', error.message);
+      errorTracking.captureError(
+        new Error(`Request setup error: ${error.message}`),
+        { path: error.config?.url }
+      );
     }
     
->>>>>>> origin/main
     return Promise.reject(error);
   }
 );
@@ -160,12 +167,6 @@ export interface AddRuleRequest {
   weight: number;
 }
 
-<<<<<<< HEAD
-// API functions
-export const evaluateAction = async (action: string): Promise<EvaluateResponse> => {
-  const response = await apiClient.post<EvaluateResponse>('/evaluate', { action });
-  return response.data;
-=======
 // API functions with validation
 export const evaluateAction = async (action: string): Promise<EvaluateResponse> => {
   // Validate input
@@ -180,20 +181,10 @@ export const evaluateAction = async (action: string): Promise<EvaluateResponse> 
   
   // Validate response
   return EvaluateResponseSchema.parse(response.data);
->>>>>>> origin/main
 };
 
 export const getRules = async (): Promise<MoralRule[]> => {
   const response = await apiClient.get<MoralRule[]>('/rules');
-<<<<<<< HEAD
-  return response.data;
-};
-
-export const addRule = async (rule: AddRuleRequest): Promise<void> => {
-  await apiClient.post('/rules', rule);
-};
-
-=======
   
   // Validate response array
   const rules = z.array(MoralRuleSchema).parse(response.data);
@@ -206,4 +197,3 @@ export const addRule = async (rule: AddRuleRequest): Promise<void> => {
   
   await apiClient.post('/rules', validated);
 };
->>>>>>> origin/main

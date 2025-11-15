@@ -1,8 +1,22 @@
+// LLM Provider Redundancy System modules
+pub mod models;
+pub mod router;
+pub mod cost_manager;
+pub mod health;
+pub mod redundancy;
+
+// Re-export key types
+pub use models::{ModelMetadata, ModelCapabilities, ModelPricing, ModelRegistry, TaskRequirements};
+pub use router::ModelRouter;
+pub use cost_manager::{CostManager, CostStatistics, BudgetWarning};
+pub use health::{HealthMonitor, HealthStatus, ModelHealth, HealthSummary};
+pub use redundancy::{LLMRedundancyOrchestrator, LLMResponse, create_orchestrator};
+
 use crate::config::Config;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// OpenRouter API client for LLM interactions
+/// OpenRouter API client for LLM interactions (legacy - use LLMRedundancyOrchestrator for redundancy)
 pub struct OpenRouterClient {
     config: Arc<Config>,
     client: reqwest::Client,

@@ -11,17 +11,12 @@ CREATE TABLE IF NOT EXISTS soul_entities (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-<<<<<<< HEAD
--- Soul emotions table  
-=======
 -- Add validation constraints for soul_entities
-ALTER TABLE soul_entities ADD CONSTRAINT chk_trust_score
-    CHECK (trust_score >= 0.0 AND trust_score <= 1.0);
-ALTER TABLE soul_entities ADD CONSTRAINT chk_decay_rate
-    CHECK (decay_rate >= 0.0 AND decay_rate <= 1.0);
+-- NOTE: SQLite does not support ALTER TABLE ... ADD CONSTRAINT.
+-- These checks are documented here but enforced in application logic
+-- and during query validation instead of as database constraints.
 
 -- Soul emotions table
->>>>>>> origin/main
 CREATE TABLE IF NOT EXISTS soul_emotions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     entity_id INTEGER NOT NULL,
@@ -31,15 +26,11 @@ CREATE TABLE IF NOT EXISTS soul_emotions (
     UNIQUE(entity_id, emotion)
 );
 
-<<<<<<< HEAD
-=======
 -- Add validation constraints for soul_emotions
-ALTER TABLE soul_emotions ADD CONSTRAINT chk_emotion_count
-    CHECK (count >= 1);
-ALTER TABLE soul_emotions ADD CONSTRAINT chk_emotion_type
-    CHECK (emotion IN ('joy', 'sadness', 'anger', 'fear', 'surprise', 'disgust', 'trust', 'anticipation', 'love', 'empathy'));
-
->>>>>>> origin/main
+-- NOTE: SQLite does not support ALTER TABLE ... ADD CONSTRAINT.
+-- The minimum count and emotion type validation are enforced in application
+-- code and through higher-level logic rather than database constraints.
+-- The emotion field stores EmotionType enum values as strings.
 -- Soul memory links table
 CREATE TABLE IF NOT EXISTS soul_memory_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

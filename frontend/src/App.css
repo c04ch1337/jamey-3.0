@@ -128,8 +128,6 @@ button:disabled {
   border-left: 4px solid #c33;
 }
 
-<<<<<<< HEAD
-=======
 .success {
   margin-top: 1rem;
   padding: 1rem;
@@ -140,7 +138,6 @@ button:disabled {
   font-weight: 500;
 }
 
->>>>>>> origin/main
 .rules-list {
   display: flex;
   flex-direction: column;
@@ -200,8 +197,6 @@ button:disabled {
   outline: none;
   border-color: #667eea;
 }
-<<<<<<< HEAD
-=======
 
 .add-rule-form input:disabled {
   opacity: 0.6;
@@ -232,4 +227,3 @@ textarea:disabled {
   white-space: nowrap;
   border-width: 0;
 }
->>>>>>> origin/main
