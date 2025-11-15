@@ -536,6 +536,84 @@ async function loadRules() {
 }
 ```
 
+### Desktop Apps (Tauri)
+
+**API Client** (`src-tauri/src/api.rs` or frontend `src/api/client.ts`):
+
+**Rust Backend** (`src-tauri/src/api.rs`):
+```rust
+use serde::{Deserialize, Serialize};
+use reqwest;
+
+#[derive(Serialize)]
+struct EvaluateRequest {
+    action: String,
+}
+
+#[derive(Deserialize)]
+struct EvaluateResponse {
+    score: f32,
+    action: String,
+    emotion: Option<String>,
+}
+
+pub async fn evaluate_action(action: &str, api_key: Option<&str>) -> Result<EvaluateResponse, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let mut request = client
+        .post("http://localhost:3000/evaluate")
+        .json(&EvaluateRequest {
+            action: action.to_string(),
+        });
+    
+    if let Some(key) = api_key {
+        request = request.header("x-api-key", key);
+    }
+    
+    let response = request.send().await?;
+    response.json().await
+}
+```
+
+**Frontend** (`src/api/client.ts`):
+```typescript
+import { invoke } from '@tauri-apps/api/tauri';
+
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+export interface EvaluateResponse {
+  score: number;
+  action: string;
+  emotion?: string;
+}
+
+export const evaluateAction = async (action: string): Promise<EvaluateResponse> => {
+  // Call Rust backend function
+  return await invoke<EvaluateResponse>('evaluate_action', { 
+    action,
+    apiKey: API_KEY || null 
+  });
+};
+
+// Or use direct HTTP from frontend
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    ...(API_KEY && { 'x-api-key': API_KEY }),
+  },
+});
+
+export const evaluateActionDirect = async (action: string): Promise<EvaluateResponse> => {
+  const response = await apiClient.post<EvaluateResponse>('/evaluate', { action });
+  return response.data;
+};
+```
+
 ### Mobile Apps (React Native)
 
 **API Client** (`src/api/client.ts`):
