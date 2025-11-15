@@ -1,5 +1,22 @@
 # Jamey 3.0 Frontend
 
+<div align="center">
+
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-7.2-yellow?logo=vite)
+![TanStack Query](https://img.shields.io/badge/TanStack%20Query-5.62-red)
+
+[![React](https://img.shields.io/badge/Framework-React-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF?logo=vite)](https://vitejs.dev/)
+[![TanStack Query](https://img.shields.io/badge/State%20Mgmt-TanStack%20Query-FF4154)](https://tanstack.com/query)
+
+[![Axios](https://img.shields.io/badge/HTTP%20Client-Axios-5A29E4?logo=axios)](https://axios-http.com/)
+[![Zod](https://img.shields.io/badge/Validation-Zod-3E63DD)](https://zod.dev/)
+
+</div>
+
 React frontend for Jamey 3.0 - General & Guardian system. This frontend provides a UI for the Conscience Engine and Memory System.
 
 ## Quick Start
@@ -21,6 +38,7 @@ cp .env.example .env
 Edit `.env` and set:
 - `VITE_API_URL` - Backend API URL (default: `http://localhost:3000`)
 - `VITE_API_KEY` - Your API key (optional, if backend requires authentication)
+- `VITE_API_KEY_FORMAT` - API key format: `x-api-key` (default) or `bearer` (optional)
 
 ### 3. Create API Key (If Needed)
 
@@ -66,10 +84,15 @@ The frontend will be available at `http://localhost:5173` (or the port Vite assi
 |----------|----------|---------|-------------|
 | `VITE_API_URL` | No | `http://localhost:3000` | Backend API URL |
 | `VITE_API_KEY` | No | - | API key for authentication |
+| `VITE_API_KEY_FORMAT` | No | `x-api-key` | API key format: `x-api-key` or `bearer` |
 
 ### API Key Authentication
 
-The frontend supports API key authentication via the `x-api-key` header. If `VITE_API_KEY` is set, it will be automatically included in all requests.
+The frontend supports API key authentication via two header formats:
+- **x-api-key** (default): `x-api-key: jamey_your-key-here`
+- **Authorization Bearer**: `Authorization: Bearer jamey_your-key-here`
+
+Set `VITE_API_KEY_FORMAT=bearer` to use the Authorization Bearer format. If `VITE_API_KEY` is set, it will be automatically included in all requests.
 
 **Note**: If your backend doesn't require authentication, you can leave `VITE_API_KEY` empty.
 

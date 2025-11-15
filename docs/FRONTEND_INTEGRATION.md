@@ -114,12 +114,17 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 const API_KEY = process.env.REACT_APP_API_KEY;
+// Support both x-api-key and Authorization: Bearer formats
+const API_KEY_FORMAT = process.env.REACT_APP_API_KEY_FORMAT || 'x-api-key';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    ...(API_KEY && { 'x-api-key': API_KEY }),
+    // Supports both x-api-key and Authorization: Bearer formats
+    ...(API_KEY && (API_KEY_FORMAT === 'bearer' 
+      ? { 'Authorization': `Bearer ${API_KEY}` }
+      : { 'x-api-key': API_KEY })),
   },
 });
 

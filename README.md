@@ -1,5 +1,39 @@
 # Jamey 3.0 - General & Guardian
 
+<div align="center">
+
+![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
+![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)
+![Node](https://img.shields.io/badge/node-18+-green.svg)
+![License](https://img.shields.io/badge/license-Eternal%20Hive-purple.svg)
+![Status](https://img.shields.io/badge/status-active-success.svg)
+
+[![Rust](https://img.shields.io/badge/Backend-Rust-orange?logo=rust)](https://www.rust-lang.org/)
+[![React](https://img.shields.io/badge/Frontend-React-blue?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-blue?logo=sqlite)](https://www.sqlite.org/)
+[![MQTT](https://img.shields.io/badge/Protocol-MQTT-orange?logo=eclipsemosquitto)](https://mqtt.org/)
+
+[![Axum](https://img.shields.io/badge/Web%20Framework-Axum-0.7-green)](https://github.com/tokio-rs/axum)
+[![Tokio](https://img.shields.io/badge/Async-Tokio-1.0-blue)](https://tokio.rs/)
+[![Vite](https://img.shields.io/badge/Build%20Tool-Vite-7.2-yellow?logo=vite)](https://vitejs.dev/)
+[![TanStack Query](https://img.shields.io/badge/State-TanStack%20Query-5.62-red)](https://tanstack.com/query)
+
+[![Conscience Engine](https://img.shields.io/badge/Feature-Conscience%20Engine-purple)](./src/conscience/)
+[![Memory System](https://img.shields.io/badge/Feature-5--Layer%20Memory-blue)](./src/memory/)
+[![Soul KB](https://img.shields.io/badge/Feature-Soul%20KB-pink)](./src/soul/)
+[![MQTT Client](https://img.shields.io/badge/Feature-MQTT%20Client-orange)](./src/mqtt/)
+
+[![API](https://img.shields.io/badge/API-REST%20API-green)](./docs/API_REFERENCE.md)
+[![CLI](https://img.shields.io/badge/CLI-Interactive%20Chat-blue)](./src/bin/jamey-cli.rs)
+[![Frontend](https://img.shields.io/badge/Frontend-React%20App-61DAFB?logo=react)](./frontend/)
+[![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blue)](./docs/)
+
+[![Eternal Hive](https://img.shields.io/badge/Part%20of-Eternal%20Hive-purple)](https://github.com/TransformArmyAI/Eternal-Hive)
+[![Transform Army AI](https://img.shields.io/badge/Transform-Army%20AI-black)](https://github.com/TransformArmyAI)
+
+</div>
+
 Jamey 3.0 is the digital mirror and guardian system, part of the Eternal Hive architecture. It features a Conscience Engine for moral evaluation and a 5-Layer Memory System for persistent knowledge storage.
 
 ## Architecture
@@ -235,7 +269,9 @@ npm run build
 - **docs/mqtt_architecture.md** - MQTT system architecture and design
 - **docs/MQTT_USAGE.md** - MQTT client usage and configuration guide
 - **docs/setup/** - Setup and configuration guides
-- `docs/phase_4_6_architecture.md` - Soul KB and emoji emotion system design
+- **docs/phase_4_6_architecture.md** - Soul KB and emoji emotion system design
+- **docs/BADGES.md** - Complete badge and icon reference guide
+- **docs/BADGES_QUICK_REFERENCE.md** - Quick copy-paste badge collection
 
 ## License
 

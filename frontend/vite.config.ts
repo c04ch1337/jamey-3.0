@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   
   const apiUrl = env.VITE_API_URL || 'http://localhost:3000'
   const apiKey = env.VITE_API_KEY
+  const apiKeyFormat = env.VITE_API_KEY_FORMAT || 'x-api-key'
 
   return {
     plugins: [react()],
@@ -18,9 +19,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           configure: (proxy, _options) => {
             // Forward API key header from environment if available
+            // Supports both x-api-key and Authorization: Bearer formats
             if (apiKey) {
               proxy.on('proxyReq', (proxyReq, req, _res) => {
-                proxyReq.setHeader('x-api-key', apiKey);
+                if (apiKeyFormat === 'bearer') {
+                  proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+                } else {
+                  proxyReq.setHeader('x-api-key', apiKey);
+                }
               });
             }
           },
@@ -30,9 +36,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           configure: (proxy, _options) => {
             // Forward API key header from environment if available
+            // Supports both x-api-key and Authorization: Bearer formats
             if (apiKey) {
               proxy.on('proxyReq', (proxyReq, req, _res) => {
-                proxyReq.setHeader('x-api-key', apiKey);
+                if (apiKeyFormat === 'bearer') {
+                  proxyReq.setHeader('Authorization', `Bearer ${apiKey}`);
+                } else {
+                  proxyReq.setHeader('x-api-key', apiKey);
+                }
               });
             }
           },

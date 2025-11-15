@@ -2,13 +2,18 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY;
+// Support both x-api-key and Authorization: Bearer formats
+// Set VITE_API_KEY_FORMAT=bearer to use Authorization: Bearer header instead
+const API_KEY_FORMAT = import.meta.env.VITE_API_KEY_FORMAT || 'x-api-key';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     // Include API key if available (supports both x-api-key and Authorization: Bearer formats)
-    ...(API_KEY && { 'x-api-key': API_KEY }),
+    ...(API_KEY && (API_KEY_FORMAT === 'bearer' 
+      ? { 'Authorization': `Bearer ${API_KEY}` }
+      : { 'x-api-key': API_KEY })),
   },
 });
 
