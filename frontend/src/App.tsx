@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { evaluateAction, getRules, addRule, type AddRuleRequest, AddRuleRequestSchema } from './api/client'
 import { z } from 'zod'
@@ -31,6 +31,10 @@ const RuleDescriptionSchema = z.string()
   .max(500, 'Description too long (max 500 characters)')
   .transform(sanitizeInput);
 
+const RuleWeightSchema = z.number()
+  .min(0, 'Weight must be >= 0')
+  .max(100, 'Weight must be <= 100');
+
 function App() {
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -40,6 +44,7 @@ function App() {
     weight: 8.0,
   })
   const [ruleError, setRuleError] = useState<string | null>(null)
+  const [ruleSuccess, setRuleSuccess] = useState(false)
   const queryClient = useQueryClient()
 
   // Fetch rules
@@ -57,7 +62,15 @@ function App() {
   const evaluateMutation = useMutation({
     mutationFn: evaluateAction,
     onSuccess: () => {
-      // Optionally refetch rules or other data
+      // Clear any previous errors
+      setActionError(null)
+    },
+    onError: (error) => {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to evaluate action. Please try again.'
+      )
     },
   })
 
@@ -67,8 +80,35 @@ function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
       setNewRule({ name: '', description: '', weight: 8.0 })
+      setRuleError(null)
+      setRuleSuccess(true)
+      // Clear success message after 3 seconds
+      setTimeout(() => setRuleSuccess(false), 3000)
+    },
+    onError: (error) => {
+      setRuleSuccess(false)
+      setRuleError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to add rule. Please try again.'
+      )
     },
   })
+
+  // Handle form submission on Enter key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        const target = e.target as HTMLElement
+        if (target.tagName === 'TEXTAREA' && target.id === 'action-input') {
+          e.preventDefault()
+          handleEvaluate()
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [action])
 
   const handleEvaluate = () => {
     setActionError(null)
@@ -85,15 +125,47 @@ function App() {
 
   const handleAddRule = () => {
     setRuleError(null)
+    setRuleSuccess(false)
     
-    // Validate input
-    const validation = AddRuleRequestSchema.safeParse(newRule)
+    // Validate all fields
+    const nameValidation = RuleNameSchema.safeParse(newRule.name.trim())
+    if (!nameValidation.success) {
+      setRuleError(nameValidation.error.errors[0]?.message || 'Invalid rule name')
+      return
+    }
+
+    const descValidation = RuleDescriptionSchema.safeParse(newRule.description.trim())
+    if (!descValidation.success) {
+      setRuleError(descValidation.error.errors[0]?.message || 'Invalid description')
+      return
+    }
+
+    const weightValidation = RuleWeightSchema.safeParse(newRule.weight)
+    if (!weightValidation.success) {
+      setRuleError(weightValidation.error.errors[0]?.message || 'Invalid weight')
+      return
+    }
+
+    // Validate complete rule object
+    const validation = AddRuleRequestSchema.safeParse({
+      name: nameValidation.data,
+      description: descValidation.data,
+      weight: weightValidation.data,
+    })
+    
     if (!validation.success) {
       setRuleError(validation.error.errors[0]?.message || 'Invalid input')
       return
     }
 
     addRuleMutation.mutate(validation.data)
+  }
+
+  const handleRuleFormKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      handleAddRule()
+    }
   }
 
   return (
@@ -114,11 +186,18 @@ function App() {
               id="action-input"
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              placeholder="Enter an action to evaluate..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault()
+                  handleEvaluate()
+                }
+              }}
+              placeholder="Enter an action to evaluate... (Ctrl+Enter to submit)"
               rows={4}
               aria-describedby="action-description"
               aria-invalid={!!actionError}
               aria-required="true"
+              disabled={evaluateMutation.isPending}
             />
             <div id="action-description" className="visually-hidden">
               Enter the action you want to evaluate for moral implications
@@ -154,7 +233,7 @@ function App() {
               {actionError}
             </div>
           )}
-          {evaluateMutation.isError && (
+          {evaluateMutation.isError && !actionError && (
             <div className="error" role="alert" aria-live="assertive">
               <strong>Error:</strong> {
                 evaluateMutation.error instanceof Error
@@ -196,54 +275,78 @@ function App() {
             </div>
           )}
 
-          <div className="add-rule-form" role="form" aria-labelledby="add-rule-heading">
+          <div className="add-rule-form" role="form" aria-labelledby="add-rule-heading" onKeyDown={handleRuleFormKeyDown}>
             <h3 id="add-rule-heading">Add New Rule</h3>
-            <label htmlFor="rule-name-input" className="visually-hidden">
-              Rule name
+            <label htmlFor="rule-name-input">
+              Rule name <span aria-label="required">*</span>
             </label>
             <input
               id="rule-name-input"
               type="text"
               placeholder="Rule name"
               value={newRule.name}
-              onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+              onChange={(e) => {
+                setNewRule({ ...newRule, name: e.target.value })
+                setRuleError(null)
+                setRuleSuccess(false)
+              }}
               aria-required="true"
               aria-describedby="rule-name-description"
+              disabled={addRuleMutation.isPending}
             />
             <div id="rule-name-description" className="visually-hidden">
               Enter a name for the moral rule
             </div>
             
-            <label htmlFor="rule-description-input" className="visually-hidden">
-              Description
+            <label htmlFor="rule-description-input">
+              Description <span aria-label="required">*</span>
             </label>
             <input
               id="rule-description-input"
               type="text"
               placeholder="Description"
               value={newRule.description}
-              onChange={(e) => setNewRule({ ...newRule, description: e.target.value })}
+              onChange={(e) => {
+                setNewRule({ ...newRule, description: e.target.value })
+                setRuleError(null)
+                setRuleSuccess(false)
+              }}
               aria-required="true"
               aria-describedby="rule-description-description"
+              disabled={addRuleMutation.isPending}
             />
             <div id="rule-description-description" className="visually-hidden">
               Enter a description for the moral rule
             </div>
             
-            <label htmlFor="rule-weight-input" className="visually-hidden">
-              Weight
+            <label htmlFor="rule-weight-input">
+              Weight (0-100) <span aria-label="required">*</span>
             </label>
             <input
               id="rule-weight-input"
               type="number"
               placeholder="Weight"
               value={newRule.weight}
-              onChange={(e) => setNewRule({ ...newRule, weight: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0
+                setNewRule({ ...newRule, weight: value })
+                setRuleError(null)
+                setRuleSuccess(false)
+              }}
+              onBlur={(e) => {
+                // Clamp value to valid range on blur
+                const value = parseFloat(e.target.value) || 0
+                const clamped = Math.max(0, Math.min(100, value))
+                if (clamped !== value) {
+                  setNewRule({ ...newRule, weight: clamped })
+                }
+              }}
               step="0.1"
               min="0"
               max="100"
               aria-required="true"
               aria-describedby="rule-weight-description"
+              disabled={addRuleMutation.isPending}
             />
             <div id="rule-weight-description" className="visually-hidden">
               Enter a weight between 0 and 100 for the moral rule
@@ -253,7 +356,12 @@ function App() {
                 {ruleError}
               </div>
             )}
-            {addRuleMutation.isError && (
+            {ruleSuccess && (
+              <div className="success" role="status" aria-live="polite" style={{ marginTop: '0.5rem' }}>
+                ✓ Rule added successfully!
+              </div>
+            )}
+            {addRuleMutation.isError && !ruleError && (
               <div className="error" role="alert" aria-live="assertive" style={{ marginTop: '0.5rem' }}>
                 <strong>Error:</strong> {
                   addRuleMutation.error instanceof Error
@@ -264,13 +372,13 @@ function App() {
             )}
             <button
               onClick={handleAddRule}
-              disabled={addRuleMutation.isPending}
+              disabled={addRuleMutation.isPending || !newRule.name.trim() || !newRule.description.trim()}
               aria-describedby="add-rule-button-description"
             >
               {addRuleMutation.isPending ? 'Adding...' : 'Add Rule'}
             </button>
             <div id="add-rule-button-description" className="visually-hidden">
-              Click to add a new moral rule to the system
+              Click to add a new moral rule to the system (or press Ctrl+Enter)
             </div>
           </div>
         </section>
