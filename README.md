@@ -96,19 +96,24 @@ cd frontend
 npm install
 ```
 
-3. Start the development server:
+3. Configure environment (see [Frontend Quick Start](docs/FRONTEND_QUICK_START.md)):
+```bash
+cp .env.example .env
+# Edit .env and add your API key if needed
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173` (or the port Vite assigns)
 
-### Environment Variables
+**Quick Setup**: See [Frontend Quick Start Guide](docs/FRONTEND_QUICK_START.md) for 5-minute setup.
 
-Create a `.env` file in the frontend directory (optional):
-```
-VITE_API_URL=http://localhost:3000
-```
+**Multiple Frontends**: See [Multiple Frontends Guide](docs/MULTIPLE_FRONTENDS.md) for setting up local desktop + remote frontends.
+
+**Any Framework**: See [Universal Frontend Integration Guide](docs/FRONTEND_INTEGRATION.md) for React, Vue, Angular, vanilla JS, desktop, and mobile apps.
 
 ## API Endpoints
 
