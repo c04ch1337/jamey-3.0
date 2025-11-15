@@ -1,0 +1,82 @@
+groups:
+  - name: consciousness_alerts
+    interval: 30s
+    rules:
+      # Critical: Φ value too low
+      - alert: ConsciousnessPhiCritical
+        expr: consciousness_phi_value < 0.3
+        for: 5m
+        labels:
+          severity: P1
+          subsystem: consciousness
+        annotations:
+          summary: "Critical: Consciousness Φ value below threshold"
+          description: "Φ value is {{ $value }}, which is below critical threshold of 0.3. System consciousness may be impaired."
+          recovery_action: "Check consciousness subsystems, verify memory system, review recent events"
+          runbook: "https://docs.jamey-3.0/runbooks/consciousness-phi-critical"
+
+      # Warning: Φ value degraded
+      - alert: ConsciousnessPhiWarning
+        expr: consciousness_phi_value < 0.5 and consciousness_phi_value >= 0.3
+        for: 10m
+        labels:
+          severity: P2
+          subsystem: consciousness
+        annotations:
+          summary: "Warning: Consciousness Φ value degraded"
+          description: "Φ value is {{ $value }}, which is below optimal threshold of 0.5."
+          recovery_action: "Monitor consciousness metrics, check for subsystem degradation"
+          runbook: "https://docs.jamey-3.0/runbooks/consciousness-phi-warning"
+
+      # Critical: Workspace activity too low
+      - alert: WorkspaceActivityCritical
+        expr: consciousness_workspace_activity < 0.2
+        for: 5m
+        labels:
+          severity: P1
+          subsystem: consciousness
+        annotations:
+          summary: "Critical: Global Workspace activity critically low"
+          description: "Workspace activity is {{ $value }}, indicating potential system stagnation."
+          recovery_action: "Check attention system, verify memory encoding, review input processing"
+          runbook: "https://docs.jamey-3.0/runbooks/workspace-activity-critical"
+
+      # Warning: Metacognition level low
+      - alert: MetacognitionLevelWarning
+        expr: consciousness_metacognition_level < 0.4
+        for: 10m
+        labels:
+          severity: P2
+          subsystem: consciousness
+        annotations:
+          summary: "Warning: Metacognition level below optimal"
+          description: "Metacognition level is {{ $value }}, indicating reduced self-awareness."
+          recovery_action: "Review higher-order thought processes, check HOT subsystem"
+          runbook: "https://docs.jamey-3.0/runbooks/metacognition-warning"
+
+      # Critical: Attention system failure
+      - alert: AttentionSystemFailure
+        expr: rate(consciousness_attention_shifts_total[5m]) == 0 and consciousness_attention_focus_len == 0
+        for: 2m
+        labels:
+          severity: P1
+          subsystem: attention
+        annotations:
+          summary: "Critical: Attention system appears non-functional"
+          description: "No attention shifts detected and focus length is zero for 2 minutes."
+          recovery_action: "Restart attention subsystem, verify attention processing pipeline"
+          runbook: "https://docs.jamey-3.0/runbooks/attention-system-failure"
+
+      # Warning: Excessive attention shifts
+      - alert: AttentionShiftsExcessive
+        expr: rate(consciousness_attention_shifts_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: P2
+          subsystem: attention
+        annotations:
+          summary: "Warning: Excessive attention shifts detected"
+          description: "Attention is shifting {{ $value }} times per minute, indicating potential instability."
+          recovery_action: "Review attention patterns, check for input overload"
+          runbook: "https://docs.jamey-3.0/runbooks/attention-shifts-excessive"
+

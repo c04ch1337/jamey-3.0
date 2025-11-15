@@ -7,6 +7,7 @@ edition = "2021"
 # Web framework
 axum = { version = "0.7", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
+<<<<<<< HEAD
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["cors", "trace", "limit"] }
 validator = { version = "0.18", features = ["derive"] }
@@ -14,6 +15,13 @@ axum-extra = { version = "0.9", features = ["typed-header"] }
 
 # Database
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "migrate"] }
+=======
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
+>>>>>>> origin/main
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -25,7 +33,18 @@ thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
+<<<<<<< HEAD
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+=======
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.2"
+# Opentelemetry
+opentelemetry = { version = "0.22" }
+opentelemetry-otlp = { version = "0.15", features = ["tokio"] }
+tracing-opentelemetry = "0.23"
+opentelemetry-jaeger = { version = "0.21", features = ["tokio"] }
+>>>>>>> origin/main
 
 # Search/Indexing
 tantivy = "0.22"
@@ -37,12 +56,37 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Thread-safe collections
 dashmap = "5.5"
 
+<<<<<<< HEAD
+=======
+# Neural computation and parallel processing
+ndarray = { version = "0.15", features = ["rayon", "serde"] }
+rayon = "1.8"
+
+# Compression
+lz4 = "1.24"
+
+# Metrics and monitoring
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+tokio-tungstenite = "0.20"
+
+>>>>>>> origin/main
 # MQTT
 rumqttc = { version = "0.24", features = ["use-rustls"] }
 rustls = "0.23"
 rustls-pemfile = "2.0"
 jsonwebtoken = "9.3"
 
+<<<<<<< HEAD
+=======
+# Security dependencies
+validator = { version = "0.18", features = ["derive"] }
+governor = "0.6"
+bcrypt = "0.15"
+regex = "1.10"
+time = { version = "0.3", features = ["serde"] }
+
+>>>>>>> origin/main
 # Async runtime utilities
 futures = "0.3"
 
@@ -55,6 +99,7 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 # CLI argument parsing
 clap = { version = "4.5", features = ["derive"] }
 
+<<<<<<< HEAD
 # Metrics and monitoring
 metrics = "0.22"
 metrics-exporter-prometheus = "0.12"
@@ -63,10 +108,21 @@ governor = "0.6"
 # Cryptography for API key hashing
 sha2 = "0.10"
 
+=======
+>>>>>>> origin/main
 [[bin]]
 name = "jamey-cli"
 path = "src/bin/jamey-cli.rs"
 
 [dev-dependencies]
+<<<<<<< HEAD
 tokio-test = "0.4"
+=======
+criterion = { version = "0.5", features = ["async_tokio"] }
+tempfile = "3.10"
+
+[[bench]]
+name = "system_benchmarks"
+harness = false
+>>>>>>> origin/main
 

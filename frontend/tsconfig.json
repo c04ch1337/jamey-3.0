@@ -1,4 +1,10 @@
 {
+<<<<<<< HEAD
+=======
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+>>>>>>> origin/main
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

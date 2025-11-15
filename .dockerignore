@@ -1,0 +1,12 @@
+# Ignore git artifacts
+.git
+.gitignore
+
+# Ignore build artifacts
+target/
+.dockerignore
+Dockerfile
+
+# Ignore local development artifacts
+.env
+/frontend/node_modules

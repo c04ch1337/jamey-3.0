@@ -1,9 +1,12 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+<<<<<<< HEAD
 use tracing::info;
 
 use crate::soul::{Emotion, SoulStorage};
+=======
+>>>>>>> origin/main
 
 /// A moral rule with a weight and description
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,11 +19,15 @@ pub struct MoralRule {
 /// Conscience Engine that evaluates actions against moral rules
 #[derive(Clone)]
 pub struct ConscienceEngine {
+<<<<<<< HEAD
     /// Thread-safe storage of moral rules
     rules: Arc<DashMap<String, MoralRule>>,
 
     /// Optional Soul KB integration
     soul_storage: Option<Arc<SoulStorage>>,
+=======
+    rules: Arc<DashMap<String, MoralRule>>,
+>>>>>>> origin/main
 }
 
 impl ConscienceEngine {
@@ -47,6 +54,7 @@ impl ConscienceEngine {
             },
         );
 
+<<<<<<< HEAD
         Self { 
             rules,
             soul_storage: None,
@@ -57,6 +65,9 @@ impl ConscienceEngine {
     pub fn with_soul_storage(mut self, storage: Arc<SoulStorage>) -> Self {
         self.soul_storage = Some(storage);
         self
+=======
+        Self { rules }
+>>>>>>> origin/main
     }
 
     /// Add a new moral rule
@@ -74,7 +85,12 @@ impl ConscienceEngine {
         self.rules.iter().map(|entry| entry.value().clone()).collect()
     }
 
+<<<<<<< HEAD
     /// Basic evaluation against moral rules
+=======
+    /// Evaluate an action against all moral rules
+    /// Returns a score where higher is more moral
+>>>>>>> origin/main
     pub fn evaluate(&self, action: &str) -> f32 {
         let action_lower = action.to_lowercase();
         let mut score = 0.0;
@@ -98,6 +114,7 @@ impl ConscienceEngine {
 
         score
     }
+<<<<<<< HEAD
 
     /// Evaluate action and record emotion in Soul KB if entity provided
     pub async fn evaluate_with_soul(
@@ -137,6 +154,8 @@ impl ConscienceEngine {
 
         Ok((score, emotion))
     }
+=======
+>>>>>>> origin/main
 }
 
 impl Default for ConscienceEngine {
@@ -148,8 +167,11 @@ impl Default for ConscienceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+<<<<<<< HEAD
     use tempfile::tempdir;
     use crate::db::init_db;
+=======
+>>>>>>> origin/main
 
     #[test]
     fn test_default_rules() {
@@ -164,6 +186,7 @@ mod tests {
         let score = engine.evaluate("I will help someone in need");
         assert!(score >= 0.0);
     }
+<<<<<<< HEAD
 
     #[tokio::test]
     async fn test_evaluate_with_soul() {
@@ -188,3 +211,7 @@ mod tests {
         assert!(emotion.is_some());
     }
 }
+=======
+}
+
+>>>>>>> origin/main

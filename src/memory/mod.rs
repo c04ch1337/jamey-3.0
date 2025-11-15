@@ -1,17 +1,23 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+<<<<<<< HEAD
 use std::time::Duration;
+=======
+>>>>>>> origin/main
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, TantivyDocument};
 use uuid::Uuid;
+<<<<<<< HEAD
 use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::soul::SoulStorage;
 use crate::metrics;
+=======
+>>>>>>> origin/main
 
 /// Represents a memory record
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,7 +26,10 @@ pub struct MemoryRecord {
     pub content: String,
     pub timestamp: DateTime<Utc>,
     pub layer: MemoryLayer,
+<<<<<<< HEAD
     pub entity_id: Option<String>, // Added for soul integration
+=======
+>>>>>>> origin/main
 }
 
 /// The five memory layers
@@ -48,8 +57,13 @@ impl MemoryLayer {
 /// Manages the 5-layer memory system with Tantivy indexing
 pub struct MemorySystem {
     indices: std::collections::HashMap<MemoryLayer, Index>,
+<<<<<<< HEAD
     data_dir: PathBuf,
     soul_storage: Option<Arc<SoulStorage>>, // Added for soul integration
+=======
+    #[allow(dead_code)]
+    data_dir: PathBuf, // Kept for potential future use (backup paths, etc.)
+>>>>>>> origin/main
 }
 
 impl MemorySystem {
@@ -75,6 +89,7 @@ impl MemorySystem {
             schema_builder.add_text_field("id", STRING | STORED);
             schema_builder.add_text_field("content", TEXT | STORED);
             schema_builder.add_date_field("timestamp", INDEXED | STORED);
+<<<<<<< HEAD
             schema_builder.add_text_field("entity_id", STRING | STORED); // Added for soul integration
             let schema = schema_builder.build();
 
@@ -82,10 +97,25 @@ impl MemorySystem {
             let index = match Index::open_in_dir(&layer_dir) {
                 Ok(idx) => idx,
                 Err(_) => Index::create_in_dir(&layer_dir, schema)?,
+=======
+            let schema = schema_builder.build();
+
+            // Try to open existing index, or create new one if it doesn't exist
+            let index = match Index::open_in_dir(&layer_dir) {
+                Ok(idx) => {
+                    // Index exists, verify schema matches
+                    idx
+                }
+                Err(_) => {
+                    // Index doesn't exist, create it
+                    Index::create_in_dir(&layer_dir, schema)?
+                }
+>>>>>>> origin/main
             };
             indices.insert(layer, index);
         }
 
+<<<<<<< HEAD
         Ok(Self { 
             indices, 
             data_dir,
@@ -115,6 +145,13 @@ impl MemorySystem {
         content: String,
         entity_id: Option<&str>,
     ) -> anyhow::Result<String> {
+=======
+        Ok(Self { indices, data_dir })
+    }
+
+    /// Store a memory record in the specified layer
+    pub async fn store(&self, layer: MemoryLayer, content: String) -> anyhow::Result<String> {
+>>>>>>> origin/main
         let id = Uuid::new_v4().to_string();
         let timestamp = Utc::now();
 
@@ -123,7 +160,10 @@ impl MemorySystem {
             content: content.clone(),
             timestamp,
             layer,
+<<<<<<< HEAD
             entity_id: entity_id.map(String::from),
+=======
+>>>>>>> origin/main
         };
 
         // Get the index for this layer
@@ -136,23 +176,33 @@ impl MemorySystem {
         let id_field = schema.get_field("id")?;
         let content_field = schema.get_field("content")?;
         let timestamp_field = schema.get_field("timestamp")?;
+<<<<<<< HEAD
         let entity_field = schema.get_field("entity_id")?;
+=======
+>>>>>>> origin/main
 
         // Create document
         let mut doc = TantivyDocument::default();
         doc.add_text(id_field, &record.id);
         doc.add_text(content_field, &record.content);
+<<<<<<< HEAD
         let tantivy_timestamp = tantivy::DateTime::from_timestamp_secs(timestamp.timestamp());
         doc.add_date(timestamp_field, tantivy_timestamp);
         if let Some(entity_id) = &record.entity_id {
             doc.add_text(entity_field, entity_id);
         }
+=======
+        // Convert chrono DateTime to Tantivy DateTime (Unix timestamp in seconds)
+        let tantivy_timestamp = tantivy::DateTime::from_timestamp_secs(timestamp.timestamp());
+        doc.add_date(timestamp_field, tantivy_timestamp);
+>>>>>>> origin/main
 
         // Write to index
         let mut index_writer: IndexWriter = index.writer(50_000_000)?;
         index_writer.add_document(doc)?;
         index_writer.commit()?;
 
+<<<<<<< HEAD
         // Link memory to soul entity if provided
         if let (Some(storage), Some(entity_id)) = (&self.soul_storage, entity_id) {
             if let Some(mut entity) = storage.get_entity(entity_id).await? {
@@ -167,6 +217,8 @@ impl MemorySystem {
             }
         }
 
+=======
+>>>>>>> origin/main
         Ok(id)
     }
 
@@ -185,7 +237,10 @@ impl MemorySystem {
         let content_field = schema.get_field("content")?;
         let id_field = schema.get_field("id")?;
         let timestamp_field = schema.get_field("timestamp")?;
+<<<<<<< HEAD
         let entity_field = schema.get_field("entity_id")?;
+=======
+>>>>>>> origin/main
 
         let reader = index.reader()?;
         let searcher = reader.searcher();
@@ -215,27 +270,38 @@ impl MemorySystem {
                 .get_first(timestamp_field)
                 .and_then(|v| v.as_datetime())
                 .map(|dt| {
+<<<<<<< HEAD
+=======
+                    // Convert Tantivy DateTime (Unix timestamp in seconds) to chrono DateTime
+>>>>>>> origin/main
                     DateTime::from_timestamp(dt.into_timestamp_secs(), 0)
                         .unwrap_or_else(Utc::now)
                 })
                 .unwrap_or_else(Utc::now);
 
+<<<<<<< HEAD
             let entity_id = retrieved_doc
                 .get_first(entity_field)
                 .and_then(|v| v.as_str())
                 .map(String::from);
 
+=======
+>>>>>>> origin/main
             results.push(MemoryRecord {
                 id,
                 content,
                 timestamp,
                 layer,
+<<<<<<< HEAD
                 entity_id,
+=======
+>>>>>>> origin/main
             });
         }
 
         Ok(results)
     }
+<<<<<<< HEAD
 
     /// Get memories linked to a specific entity
     pub async fn get_entity_memories(
@@ -422,3 +488,7 @@ mod tests {
         assert_eq!(memories[0].entity_id, Some("test_entity".to_string()));
     }
 }
+=======
+}
+
+>>>>>>> origin/main

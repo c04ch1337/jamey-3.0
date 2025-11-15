@@ -1,6 +1,7 @@
 use sqlx::{SqlitePool, Row};
 use anyhow::Result;
 use super::entity::SoulEntity;
+<<<<<<< HEAD
 use super::emotion::Emotion;
 use super::config::SoulConfig;
 use uuid::Uuid;
@@ -13,6 +14,19 @@ pub struct SoulStorage {
 impl SoulStorage {
     pub fn new(pool: SqlitePool, config: SoulConfig) -> Self {
         Self { pool, config }
+=======
+use super::emotion::{Emotion, EmotionType};
+use uuid::Uuid;
+use chrono::Utc;
+
+pub struct SoulStorage {
+    pool: SqlitePool,
+}
+
+impl SoulStorage {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+>>>>>>> origin/main
     }
     
     /// Upsert (insert or update) a soul entity
@@ -47,8 +61,21 @@ impl SoulStorage {
         };
         
         // Update emotions
+<<<<<<< HEAD
         for (emotion, count) in &entity.emotions {
             self.record_emotion(entity_id, *emotion, *count).await?;
+=======
+        for (emotion_type, count) in &entity.emotions {
+            let emotion = Emotion {
+                id: Uuid::new_v4(),
+                emotion_type: emotion_type.clone(),
+                intensity: 0.5,
+                target: None,
+                timestamp: Utc::now(),
+                duration: 0.0,
+            };
+            self.record_emotion(entity_id, emotion, *count).await?;
+>>>>>>> origin/main
         }
         
         // Update memory links
@@ -104,7 +131,11 @@ impl SoulStorage {
             "#
         )
         .bind(entity_id)
+<<<<<<< HEAD
         .bind(emotion.name())
+=======
+        .bind(emotion.emotion_type.to_string())
+>>>>>>> origin/main
         .bind(count as i64)
         .execute(&self.pool)
         .await?;
@@ -113,7 +144,11 @@ impl SoulStorage {
     }
     
     /// Get emotions for an entity
+<<<<<<< HEAD
     async fn get_emotions(&self, entity_id: i64) -> Result<std::collections::HashMap<Emotion, u32>> {
+=======
+    async fn get_emotions(&self, entity_id: i64) -> Result<std::collections::HashMap<EmotionType, u32>> {
+>>>>>>> origin/main
         let rows = sqlx::query(
             "SELECT emotion, count FROM soul_emotions WHERE entity_id = ?"
         )
@@ -124,9 +159,16 @@ impl SoulStorage {
         let mut emotions = std::collections::HashMap::new();
         for row in rows {
             let emotion_str: String = row.get("emotion");
+<<<<<<< HEAD
             if let Some(emotion) = Emotion::from_str(&emotion_str) {
                 let count: i64 = row.get("count");
                 emotions.insert(emotion, count as u32);
+=======
+            // Parse the emotion type string into EmotionType
+            if let Ok(emotion_type) = emotion_str.parse::<EmotionType>() {
+                let count: i64 = row.get("count");
+                emotions.insert(emotion_type, count as u32);
+>>>>>>> origin/main
             }
         }
         
@@ -200,10 +242,13 @@ impl SoulStorage {
     
     /// Apply decay to all entities based on time since last interaction
     pub async fn apply_global_decay(&self) -> Result<usize> {
+<<<<<<< HEAD
         if !self.config.enabled {
             return Ok(0);
         }
 
+=======
+>>>>>>> origin/main
         let entities = self.get_all_entities().await?;
         let mut updated = 0;
         
@@ -213,6 +258,7 @@ impl SoulStorage {
             
             if days > 0.0 {
                 entity.apply_decay(days);
+<<<<<<< HEAD
                 
                 // Prune entities below threshold
                 if entity.trust_score < self.config.prune_threshold {
@@ -220,12 +266,16 @@ impl SoulStorage {
                 } else {
                     self.upsert_entity(&entity).await?;
                 }
+=======
+                self.upsert_entity(&entity).await?;
+>>>>>>> origin/main
                 updated += 1;
             }
         }
         
         Ok(updated)
     }
+<<<<<<< HEAD
 
     /// Get the current configuration
     pub fn config(&self) -> &SoulConfig {
@@ -236,4 +286,6 @@ impl SoulStorage {
     pub fn update_config(&mut self, config: SoulConfig) {
         self.config = config;
     }
+=======
+>>>>>>> origin/main
 }

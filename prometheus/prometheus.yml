@@ -1,15 +1,46 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+<<<<<<< HEAD
   external_labels:
     cluster: 'jamey-3.0'
     environment: 'production'
 
 # Alertmanager configuration
+=======
+
+storage:
+  tsdb:
+    path: /prometheus
+    retention:
+      time: 30d    # Raw data retention (30 days)
+    out_of_order_time_window: 5m
+
+scrape_configs:
+  - job_name: 'jamey-3-backend'
+    static_configs:
+      - targets: ['backend:3000']
+    metrics_path: '/metrics'
+    scheme: 'http'
+    scrape_timeout: 10s
+
+  # Node exporter is optional - uncomment if you add node-exporter service
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+
+  # Consciousness metrics are exported from the backend service
+  # No separate consciousness service exists
+
+rule_files:
+  - 'rules/*.yml'
+
+>>>>>>> origin/main
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
+<<<<<<< HEAD
           - localhost:9093
 
 # Load alert rules
@@ -28,3 +59,36 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+=======
+          - 'alertmanager:9093'
+
+# Recording rules for aggregation (6-month retention handled by recording rules)
+recording_rules:
+  groups:
+    - name: aggregation
+      interval: 1h
+      rules:
+        # Consciousness metrics (existing)
+        - record: consciousness:phi_value:1h
+          expr: avg_over_time(consciousness.phi_value[1h])
+        - record: consciousness:workspace_activity:1h
+          expr: avg_over_time(consciousness.workspace_activity[1h])
+        - record: consciousness:metacognition_level:1h
+          expr: avg_over_time(consciousness.metacognition_level[1h])
+        - record: emotion:intensity:1h
+          expr: avg_over_time(emotion.intensity[1h])
+
+        # System resource utilization (CPU & memory)
+        - record: system:cpu_usage:5m
+          expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+        - record: system:memory_usage_bytes
+          expr: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+
+        # Consciousness component health (simple mapping from Φ value)
+        - record: consciousness:health_score
+          expr: clamp_max(clamp_min(consciousness.phi_value, 1), 0)
+
+        # Basic error rate (5xx HTTP responses)
+        - record: system:http_5xx_error_rate:5m
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m]))
+>>>>>>> origin/main
