@@ -1,8 +1,8 @@
 use anyhow::Result;
 use opentelemetry::{global, KeyValue};
-use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::{trace, Resource};
+use opentelemetry_otlp::WithExportConfig;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
@@ -15,12 +15,12 @@ pub fn init_telemetry() -> Result<()> {
     // Set the global propagator to be a TraceContextPropagator
     global::set_text_map_propagator(TraceContextPropagator::new());
 
-    // Create a new OpenTelemetry pipeline
-    let otlp_exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
+    // Create a new OpenTelemetry tracing pipeline with OTLP exporter configuration
+    let exporter = opentelemetry_otlp::new_exporter().tonic();
 
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
-        .with_exporter(otlp_exporter)
+        .with_exporter(exporter)
         .with_trace_config(
             trace::config().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",

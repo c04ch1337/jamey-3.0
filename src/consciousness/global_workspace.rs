@@ -56,6 +56,38 @@ struct PriorityCache {
     timestamp: chrono::DateTime<chrono::Utc>,
 }
 
+/// Simple system load monitor used by GlobalWorkspace to adjust batch size and timeouts.
+/// This is a lightweight heuristic implementation and can be replaced with a more
+/// sophisticated metrics-driven monitor later.
+#[derive(Debug)]
+struct SystemLoadMonitor {
+    last_batch_size: usize,
+}
+
+impl SystemLoadMonitor {
+    fn new() -> Self {
+        Self { last_batch_size: 0 }
+    }
+
+    /// Update internal metrics based on the last processed batch size.
+    /// Currently this is a no-op other than recording the size, but it
+    /// provides an integration point for future adaptive logic.
+    async fn update_metrics(&mut self, batch_size: usize) {
+        self.last_batch_size = batch_size;
+    }
+
+    /// Compute a multiplier for the batch size based on recent load.
+    /// For now this always returns 1.0 to keep behaviour stable.
+    fn get_batch_size_multiplier(&self) -> f64 {
+        1.0
+    }
+
+    /// Compute a multiplier for the batch timeout based on recent load.
+    /// For now this always returns 1.0 to keep behaviour stable.
+    fn get_timeout_multiplier(&self) -> f64 {
+        1.0
+    }
+}
 pub struct GlobalWorkspace {
     /// Current state of the workspace
     state: Arc<RwLock<WorkspaceState>>,

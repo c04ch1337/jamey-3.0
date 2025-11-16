@@ -14,6 +14,204 @@ use std::io::Cursor;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 
+// Lightweight scaffolding types for the attention subsystem.
+// These provide the minimal API required by ConsciousnessEngine and
+// internal tests without enforcing a complex implementation yet.
+
+#[derive(Clone, Debug)]
+pub enum AttentionState {
+    Focused(String),
+    Idle,
+    Suspended,
+}
+
+/// Simple semantic analyzer placeholder.
+/// In the future this can incorporate real NLP / embedding logic.
+#[derive(Clone, Debug)]
+struct SemanticAnalyzer {
+    window_size: usize,
+}
+
+impl SemanticAnalyzer {
+    fn new(window_size: usize) -> Self {
+        Self { window_size }
+    }
+
+    fn analyze(&self, _content: &str) -> f32 {
+        // For now return a neutral constant score.
+        self.window_size as f32
+    }
+}
+
+/// Heuristic relevance score calculator placeholder.
+#[derive(Clone, Debug)]
+struct RelevanceScore {
+    base: f32,
+    novelty_weight: f32,
+    urgency_weight: f32,
+    context_weight: f32,
+}
+
+impl RelevanceScore {
+    fn new(base: f32, novelty_weight: f32, urgency_weight: f32, context_weight: f32) -> Self {
+        Self {
+            base,
+            novelty_weight,
+            urgency_weight,
+            context_weight,
+        }
+    }
+
+    fn score(&self, _content: &str) -> f32 {
+        // Basic combined weight for now.
+        self.base + self.novelty_weight + self.urgency_weight + self.context_weight
+    }
+}
+
+/// Static weighting configuration for attention decisions.
+#[derive(Clone, Debug)]
+struct AttentionWeights {
+    focus_weight: f32,
+    recency_weight: f32,
+    salience_weight: f32,
+}
+
+impl AttentionWeights {
+    fn new() -> Self {
+        Self {
+            focus_weight: 1.0,
+            recency_weight: 1.0,
+            salience_weight: 1.0,
+        }
+    }
+}
+
+/// Simple finite-state machine for attention states.
+#[derive(Clone, Debug)]
+struct AttentionStateMachine {
+    max_concurrent: usize,
+    state_cooldown: Duration,
+    current_state: AttentionState,
+}
+
+impl AttentionStateMachine {
+    fn new(max_concurrent: usize, state_cooldown: Duration) -> Self {
+        Self {
+            max_concurrent,
+            state_cooldown,
+            current_state: AttentionState::Idle,
+        }
+    }
+
+    async fn current_state(&self) -> AttentionState {
+        self.current_state.clone()
+    }
+
+    /// Transition to a new focus item; returns true if state actually changed.
+    async fn transition(&mut self, new_focus: String) -> Result<bool> {
+        let changed = match &self.current_state {
+            AttentionState::Focused(current) if current == &new_focus => false,
+            _ => true,
+        };
+
+        if changed {
+            self.current_state = AttentionState::Focused(new_focus);
+            // In a real implementation we would respect `max_concurrent` and `state_cooldown`.
+        }
+
+        Ok(changed)
+    }
+}
+
+/// Item queued for attention processing.
+#[derive(Clone, Debug)]
+struct AttentionQueueItem {
+    content: String,
+}
+
+/// Simple FIFO attention queue with a soft priority threshold.
+#[derive(Clone, Debug)]
+struct AttentionQueue {
+    items: Arc<RwLock<VecDeque<AttentionQueueItem>>>,
+    max_size: usize,
+    min_priority: f32,
+}
+
+impl AttentionQueue {
+    fn new(max_size: usize, min_priority: f32) -> Self {
+        Self {
+            items: Arc::new(RwLock::new(VecDeque::with_capacity(max_size))),
+            max_size,
+            min_priority,
+        }
+    }
+
+    /// Enqueue a new item; oldest items are dropped if capacity is exceeded.
+    async fn enqueue(&self, content: String) -> Result<()> {
+        let mut items = self.items.write().await;
+        if items.len() >= self.max_size {
+            items.pop_front();
+        }
+        items.push_back(AttentionQueueItem { content });
+        Ok(())
+    }
+
+    /// Dequeue the next item, if any.
+    async fn dequeue(&self) -> Option<AttentionQueueItem> {
+        let mut items = self.items.write().await;
+        items.pop_front()
+    }
+}
+
+/// Conflict resolver responsible for deciding whether a new item may take focus.
+#[derive(Clone, Debug)]
+struct ConflictResolver {
+    lock_ttl: Duration,
+    max_retries: u32,
+    threshold: f32,
+    active_locks: Arc<RwLock<HashMap<String, Instant>>>,
+}
+
+impl ConflictResolver {
+    fn new(threshold: f32, lock_ttl: Duration, max_retries: u32) -> Self {
+        Self {
+            lock_ttl,
+            max_retries,
+            threshold,
+            active_locks: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    async fn acquire_lock(&self, key: String) -> Result<bool> {
+        let now = Instant::now();
+        let mut locks = self.active_locks.write().await;
+
+        // Drop expired locks
+        locks.retain(|_, ts| now.duration_since(*ts) < self.lock_ttl);
+
+        if !locks.contains_key(&key) {
+            locks.insert(key, now);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn release_lock(&self, key: &str) {
+        let mut locks = self.active_locks.write().await;
+        locks.remove(key);
+    }
+
+    /// Decide how to resolve a potential conflict between current state and a queued item.
+    async fn resolve_conflict(
+        &self,
+        _state: &AttentionState,
+        _item: &AttentionQueueItem,
+    ) -> Resolution {
+        // For now, always allow. Future logic can incorporate thresholds.
+        Resolution::Allow
+    }
+}
 // [Previous implementations remain unchanged]
 
 /// Record of a single attention focus point
@@ -209,6 +407,14 @@ impl TemporalContext {
     }
 }
 
+/// Resolution for conflict resolution
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Resolution {
+    Allow,
+    Deny,
+    Defer,
+}
+
 // Update AttentionSchema to use history system
 pub struct AttentionSchema {
     current_focus: Arc<RwLock<String>>,
@@ -265,7 +471,7 @@ impl AttentionSchema {
                                 self.history.add_record(record.clone()).await?;
                                 self.temporal_context.write().await.update(record);
                                 
-                                metrics::counter!("consciousness.attention.shifts_total").increment(1);
+                                metrics::counter!("consciousness.attention.shifts_total", 1);
                             }
                         }
                         self.conflict_resolver.release_lock(&item.content).await;

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO api_key_rotations (key_id, old_key_hash, new_key_name, grace_period_days, rotated_at)\n            VALUES (?, ?, ?, ?, datetime('now'))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "7c36d3c5639b12d55ee9e120d37d84348dc699b19865ce3d27883bbe5beb63f4"
+}

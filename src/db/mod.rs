@@ -8,7 +8,7 @@ use metrics::{counter, histogram, gauge};
 use crate::config::DatabaseConfig;
 
 pub mod operations;
-pub use operations::{DatabaseOperations, TableStats, MemoryRecord};
+pub use operations::DatabaseOperations;
 
 /// Database performance metrics
 #[derive(Debug, Clone)]
@@ -32,19 +32,23 @@ impl DbMetrics {
     pub async fn record_query(&self, duration: Duration) {
         *self.query_count.write().await += 1;
         *self.total_query_time.write().await += duration;
-        
+
         // Update metrics
         counter!("db.queries_total", 1);
         histogram!("db.query_duration_seconds", duration.as_secs_f64());
     }
 
     pub async fn update_pool_stats(&self, pool: &SqlitePool) {
-        *self.active_connections.write().await = pool.size() - pool.num_idle();
-        *self.pool_size.write().await = pool.size();
-        
-        gauge!("db.active_connections", (pool.size() - pool.num_idle()) as f64);
-        gauge!("db.pool_size", pool.size() as f64);
-        gauge!("db.idle_connections", pool.num_idle() as f64);
+        let pool_size: u32 = pool.size();
+        let idle_connections: u32 = pool.num_idle() as u32;
+        let active_connections: u32 = pool_size.saturating_sub(idle_connections);
+
+        *self.active_connections.write().await = active_connections;
+        *self.pool_size.write().await = pool_size;
+
+        gauge!("db.active_connections", active_connections as f64);
+        gauge!("db.pool_size", pool_size as f64);
+        gauge!("db.idle_connections", idle_connections as f64);
     }
 
     pub async fn get_avg_query_time(&self) -> Duration {
@@ -198,9 +202,9 @@ pub async fn health_check(pool: &SqlitePool) -> anyhow::Result<DatabaseHealth> {
     }
     
     // Get pool statistics
-    let pool_size = pool.size();
-    let idle_connections = pool.num_idle();
-    let active_connections = pool_size - idle_connections;
+    let pool_size: u32 = pool.size();
+    let idle_connections: u32 = pool.num_idle() as u32;
+    let active_connections: u32 = pool_size.saturating_sub(idle_connections);
     
     // Check database size and integrity
     let size_row = sqlx::query("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()")

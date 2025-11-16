@@ -71,13 +71,13 @@ pub struct PhoenixVault {
     encryption_key: [u8; 32],
 
     /// Whether vault is enabled
-    enabled: bool,
+    pub(crate) enabled: bool,
 
     /// Maximum backups to retain
-    max_backups: usize,
+    pub(crate) max_backups: usize,
 
     /// Encryptor instance
-    encryptor: Encryptor,
+    pub(crate) encryptor: Encryptor,
 }
 
 impl PhoenixVault {
@@ -89,7 +89,9 @@ impl PhoenixVault {
         max_backups: usize,
     ) -> anyhow::Result<Self> {
         if enabled {
-            tokio::fs::create_dir_all(&backup_dir)?;
+            // Use synchronous filesystem operation here since this constructor is not async.
+            // Async filesystem operations are used in the async backup/restore methods.
+            std::fs::create_dir_all(&backup_dir)?;
         }
 
         Ok(Self {

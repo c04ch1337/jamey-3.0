@@ -122,7 +122,7 @@ impl ConscienceEngine {
 
         // Record to Soul KB if entity provided
         if let (Some(storage), Some(name), Some(em)) = 
-            (&self.soul_storage, entity_name, emotion)
+            (&self.soul_storage, entity_name, emotion.clone())
         {
             info!(
                 entity = name,

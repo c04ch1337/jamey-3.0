@@ -60,7 +60,8 @@ pub async fn auth_middleware(
         });
 
     match provided_key {
-        Some(key) if key == auth_state.api_key.as_ref().unwrap() => {
+        // Compare against the configured key as &str to avoid String/&String mismatch
+        Some(key) if auth_state.api_key.as_deref() == Some(key.as_str()) => {
             // Authentication successful
             Ok(next.run(request).await)
         }

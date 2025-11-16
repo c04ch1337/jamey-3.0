@@ -16,7 +16,7 @@ use time::{Duration, OffsetDateTime};
 use tracing::{error, info, warn};
 
 /// JWT claims structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JwtClaims {
     /// Subject (user identifier)
     pub sub: String,
@@ -186,7 +186,7 @@ pub async fn jwt_auth_middleware(
         })?;
 
     // Extract token from header
-    let token = Self::extract_token_from_header(auth_header).ok_or_else(|| {
+    let token = JwtAuth::extract_token_from_header(auth_header).ok_or_else(|| {
         warn!("Invalid authorization header format for path: {}", request.uri().path());
         StatusCode::UNAUTHORIZED
     })?;

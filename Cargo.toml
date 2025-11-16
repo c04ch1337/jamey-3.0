@@ -38,6 +38,7 @@ opentelemetry-jaeger = { version = "0.21", features = ["tokio"] }
 
 # Search/Indexing
 tantivy = "0.22"
+strsim = "0.11"
 
 # Memory/Time
 chrono = { version = "0.4", features = ["serde"] }
@@ -55,7 +56,7 @@ lz4 = "1.24"
 flate2 = "1.0"
 
 # Metrics and monitoring
-metrics = "0.22"
+metrics = "0.21"
 metrics-exporter-prometheus = "0.12"
 tokio-tungstenite = "0.20"
 

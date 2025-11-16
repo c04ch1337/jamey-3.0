@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                id,\n                key_id,\n                old_key_hash,\n                new_key_name,\n                grace_period_days,\n                rotated_at\n            FROM api_key_rotations\n            WHERE key_id = ?\n            ORDER BY rotated_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "key_id",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "old_key_hash",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "new_key_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "grace_period_days",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "rotated_at",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3d3683321a07242ef87d08368ecc395494586017bdb416fc56efe1c11473e60d"
+}

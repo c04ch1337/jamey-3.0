@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT rate_limit_per_minute FROM api_keys WHERE key_hash = ? AND revoked_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "rate_limit_per_minute",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "2618ee0189f11dec2b66ea4ce0d227152126fc4b211344df26dc46c00a6c3dff"
+}

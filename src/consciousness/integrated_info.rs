@@ -70,6 +70,7 @@ use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use lru::LruCache;
+use std::num::NonZeroUsize;
 use std::time::Instant;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
@@ -201,7 +202,7 @@ impl ActivationBounds {
 }
 
 /// Numerical bounds for validation
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct NumericalBounds {
     range: RangeInclusive<f64>,
     name: &'static str,
@@ -292,11 +293,12 @@ impl FeatureStabilityCheck {
                 "Feature {} variance {} exceeds threshold {}",
                 feature_index, variance, self.variance_threshold
             );
-            return Err(anyhow!(StabilityError {
-                message: format!("Feature variance {} exceeds threshold", variance),
+            return Err(anyhow!(
+                "Feature {} variance {} exceeds threshold (value {})",
                 feature_index,
-                value: values[feature_index],
-            }));
+                variance,
+                values[feature_index]
+            ));
         }
 
         Ok(values[feature_index])
@@ -325,8 +327,7 @@ const ACTIVATION_THRESHOLD_HIGH: f64 = 0.9;
 /// evaluate. All state needed for Φ calculation for a given piece of content
 /// is derived on the fly from that content; there is no long-lived mutable
 /// network state between calls.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-/// Feature vector cache using LRU policy
+ /// Feature vector cache using LRU policy
 #[derive(Debug)]
 struct FeatureCache {
     cache: LruCache<u64, Vec<f64>>,
@@ -337,8 +338,9 @@ struct FeatureCache {
 
 impl FeatureCache {
     fn new(capacity: usize) -> Self {
+        let cap = NonZeroUsize::new(capacity.max(1)).unwrap();
         Self {
-            cache: LruCache::new(capacity),
+            cache: LruCache::new(cap),
             hit_count: AtomicUsize::new(0),
             miss_count: AtomicUsize::new(0),
             last_report: Instant::now(),
@@ -492,20 +494,15 @@ pub struct PhiCalculator {
     feature_max_length: f64,
     /// Maximum word count for feature extraction (for normalization).
     feature_max_words: f64,
-    /// Feature stability checker
-    #[serde(skip)]
+    /// Feature stability checker (not serialized)
     stability_check: Option<FeatureStabilityCheck>,
-    /// Feature validation pipeline
-    #[serde(skip)]
+    /// Feature validation pipeline (not serialized)
     validation_pipeline: FeatureValidationPipeline,
-    /// Activation bounds enforcement
-    #[serde(skip)]
+    /// Activation bounds enforcement (not serialized)
     activation_bounds: ActivationBounds,
-    /// Network state validator
-    #[serde(skip)]
+    /// Network state validator (not serialized)
     network_validator: NetworkStateValidator,
-    /// Feature vector cache
-    #[serde(skip)]
+    /// Feature vector cache (not serialized)
     feature_cache: FeatureCache,
 }
 
@@ -576,19 +573,28 @@ impl PhiCalculator {
         let feature_start = Instant::now();
         let features = self.extract_features(&content.content);
         let feature_duration = feature_start.elapsed();
-        histogram!("consciousness.feature_extraction.total_duration_ms", feature_duration.as_secs_f64() * 1000.0);
+        histogram!(
+            "consciousness.feature_extraction.total_duration_ms",
+            feature_duration.as_secs_f64() * 1000.0
+        );
 
         // 2. Map features into conceptual node activations in [0, 1].
         let activation_start = Instant::now();
         let activations = self.update_network_state(&features);
         let activation_duration = activation_start.elapsed();
-        histogram!("consciousness.activation_calculation.duration_ms", activation_duration.as_secs_f64() * 1000.0);
+        histogram!(
+            "consciousness.activation_calculation.duration_ms",
+            activation_duration.as_secs_f64() * 1000.0
+        );
 
         // 3. Compute raw and normalized Φ scores.
         let phi_start = Instant::now();
         let (mut phi, mut raw_score) = self.compute_phi(&activations);
         let phi_duration = phi_start.elapsed();
-        histogram!("consciousness.phi_calculation.duration_ms", phi_duration.as_secs_f64() * 1000.0);
+        histogram!(
+            "consciousness.phi_calculation.duration_ms",
+            phi_duration.as_secs_f64() * 1000.0
+        );
 
         // Guard against NaNs/Infs from any unexpected numeric issues.
         if !raw_score.is_finite() {
@@ -611,11 +617,20 @@ impl PhiCalculator {
 
         // Record total calculation time
         let total_duration = start_time.elapsed();
-        histogram!("consciousness.total_calculation.duration_ms", total_duration.as_secs_f64() * 1000.0);
-
+        histogram!(
+            "consciousness.total_calculation.duration_ms",
+            total_duration.as_secs_f64() * 1000.0
+        );
+        
         // Record memory usage
-        gauge!("consciousness.memory.feature_cache_size", self.feature_cache.cache.len() as f64);
-        gauge!("consciousness.memory.feature_cache_capacity", self.feature_cache.cache.cap() as f64);
+        gauge!(
+            "consciousness.memory.feature_cache_size",
+            self.feature_cache.cache.len() as f64
+        );
+        gauge!(
+            "consciousness.memory.feature_cache_capacity",
+            self.feature_cache.cache.cap().get() as f64
+        );
 
         Ok(phi)
     }
@@ -638,23 +653,30 @@ impl PhiCalculator {
         let len = content.chars().count() as f64;
 
         // Extract features in parallel
-        let features: Vec<f64> = vec![
+        let base_features: Vec<f64> = vec![
             self.extract_length_feature(content, len),
             self.extract_diversity_feature(content, len),
             self.extract_word_count_feature(content),
             self.extract_uppercase_feature(content, len),
             self.extract_punctuation_feature(content, len),
-        ].into_par_iter()
-         .map(|f| f.clamp(0.0, 1.0))
-         .collect();
+        ]
+        .into_par_iter()
+        .map(|f| f.clamp(0.0, 1.0))
+        .collect();
 
-        let mut validated_features = Vec::with_capacity(5);
+        // Run features through validation pipeline, but never fail the caller:
+        // fall back to the raw features on error.
+        let validated_features = match self.validation_pipeline.validate_features(&base_features) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Feature validation pipeline failed: {}", e);
+                base_features.clone()
+            }
+        };
 
-        // Run features through validation pipeline
-        let validated_features = self.validation_pipeline.validate_features(&features)?;
-
-        // Then validate for stability
-        if let Some(stability_check) = &mut self.stability_check {
+        // Then validate for stability, again treating errors as recoverable by
+        // clamping/repairing individual feature values.
+        let final_features = if let Some(stability_check) = &mut self.stability_check {
             let mut stable_features = Vec::with_capacity(validated_features.len());
             for (idx, &value) in validated_features.iter().enumerate() {
                 match stability_check.validate_feature(&validated_features, idx) {
@@ -671,14 +693,16 @@ impl PhiCalculator {
         };
 
         // Cache the computed features before returning
-        let features_clone = features.clone();
-        self.feature_cache.insert(content, features_clone);
+        self.feature_cache.insert(content, final_features.clone());
 
         // Record feature extraction time
         let duration = start_time.elapsed();
-        histogram!("consciousness.feature_extraction.duration_ms", duration.as_secs_f64() * 1000.0);
+        histogram!(
+            "consciousness.feature_extraction.duration_ms",
+            duration.as_secs_f64() * 1000.0
+        );
 
-        features
+        final_features
     }
 
     /// Recover from unstable feature values
@@ -896,12 +920,24 @@ impl PhiCalculator {
 
         // Record computation breakdown
         let duration = start_time.elapsed();
-        histogram!("consciousness.phi_calculation.breakdown.duration_ms", duration.as_secs_f64() * 1000.0);
-        gauge!("consciousness.phi_calculation.raw_integration", raw_integration);
-        gauge!("consciousness.phi_calculation.max_integration", max_integration);
+        histogram!(
+            "consciousness.phi_calculation.breakdown.duration_ms",
+            duration.as_secs_f64() * 1000.0
+        );
+        gauge!(
+            "consciousness.phi_calculation.raw_integration",
+            raw_integration
+        );
+        gauge!(
+            "consciousness.phi_calculation.max_integration",
+            max_integration
+        );
         gauge!("consciousness.phi_calculation.variance", variance);
         gauge!("consciousness.phi_calculation.var_norm", var_norm);
-        gauge!("consciousness.phi_calculation.adaptive_epsilon", adaptive_epsilon);
+        gauge!(
+            "consciousness.phi_calculation.adaptive_epsilon",
+            adaptive_epsilon
+        );
 
         (phi, raw_score.max(0.0))
     }

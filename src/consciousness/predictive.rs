@@ -31,7 +31,7 @@ impl PredictiveProcessor {
         let confidence = (thoughts.len() as f64 / 100.0).clamp(0.0, 1.0) * 0.5 + 0.5;
 
         // 2. Emit Metric.
-        metrics::gauge!("consciousness.predictive.confidence").set(confidence);
+        metrics::gauge!("consciousness.predictive.confidence", confidence);
 
         // 3. Generate Prediction: A deterministic prediction based on the last few words.
         let last_words: Vec<&str> = thoughts.split_whitespace().rev().take(3).collect();

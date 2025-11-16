@@ -207,8 +207,8 @@ impl EmotionManager {
         }
 
         // Update metrics
-        gauge!("emotion.intensity").set(intensity);
-        counter!("emotion.changes_total").increment(1);
+        gauge!("emotion.intensity", intensity);
+        counter!("emotion.changes_total", 1);
 
         Ok(emotion)
     }
@@ -257,8 +257,11 @@ impl EmotionManager {
         }
 
         // Update metrics
-        gauge!("emotional_bond.strength", "target" => target.to_string())
-            .set(strength);
+        gauge!(
+            "emotional_bond.strength",
+            strength,
+            "target" => target.to_string()
+        );
 
         Ok(())
     }

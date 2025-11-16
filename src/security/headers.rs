@@ -20,6 +20,8 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         warn!("Security headers configured for development environment");
     }
 
+    // Extract path before moving request
+    let path = request.uri().path().to_string();
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -83,7 +85,7 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     }
 
     // Cache control for API endpoints
-    if request.uri().path().starts_with("/api") {
+    if path.starts_with("/api") {
         let cache_control = "no-store, no-cache, must-revalidate, proxy-revalidate";
         if let Ok(cache_header) = HeaderValue::from_str(cache_control) {
             headers.insert(header::CACHE_CONTROL, cache_header);
@@ -94,7 +96,7 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         }
     }
 
-    info!("Applied security headers to response for path: {}", request.uri().path());
+    info!("Applied security headers to response for path: {}", path);
     response
 }
 

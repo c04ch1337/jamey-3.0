@@ -14,7 +14,7 @@ pub mod consciousness;
 
 use axum::{
     extract::State,
-    http::{HeaderName, Method, StatusCode, Request},
+    http::{HeaderName, Method, StatusCode},
     response::Json,
     routing::{get, post},
     Router,
@@ -41,7 +41,7 @@ use crate::security::{
     ThreatDetection, ThreatDetectionConfig,
     IncidentResponse, IncidentResponseConfig,
     security_middleware,
-    CsrfProtection, CsrfConfig, csrf_middleware, get_csrf_token,
+    CsrfProtection, CsrfConfig, csrf_middleware,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -68,62 +68,94 @@ pub struct AppState {
 }
 
 /// Basic health check (liveness probe)
-async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
+async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     if let Some(health_checker) = &state.health {
         let response = health_checker.check_liveness().await;
-        Json(serde_json::json!({
-            "status": response.status,
-            "service": "Jamey 3.0",
-            "version": "3.0.0",
-            "timestamp": response.timestamp
-        }))
+        Json(response)
     } else {
-        Json(serde_json::json!({
-            "status": "ok",
-            "service": "Jamey 3.0",
-            "version": "3.0.0"
-        }))
+        // Fallback minimal response when no health checker is configured
+        Json(HealthResponse {
+            status: "ok",
+            service: "Jamey 3.0",
+            version: "3.0.0",
+            components: crate::health::ComponentHealth {
+                database: crate::health::ComponentStatus {
+                    status: "unknown",
+                    message: "Health checker not configured".into(),
+                },
+                memory: crate::health::ComponentStatus {
+                    status: "unknown",
+                    message: "Health checker not configured".into(),
+                },
+                mqtt: None,
+            },
+            metrics: crate::health::SystemMetrics {
+                disk_free_bytes: 0,
+                memory_usage_bytes: None,
+                uptime_seconds: 0,
+            },
+        })
     }
 }
 
 /// Detailed health check with dependency verification
-async fn health_detailed(State(state): State<AppState>) -> Json<serde_json::Value> {
+async fn health_detailed(State(state): State<AppState>) -> Json<HealthResponse> {
     if let Some(health_checker) = &state.health {
         let response = health_checker.check_detailed().await;
-        Json(serde_json::json!({
-            "status": response.status,
-            "service": "Jamey 3.0",
-            "version": "3.0.0",
-            "timestamp": response.timestamp,
-            "dependencies": response.dependencies
-        }))
+        Json(response)
     } else {
-        Json(serde_json::json!({
-            "status": "ok",
-            "service": "Jamey 3.0",
-            "version": "3.0.0"
-        }))
+        Json(HealthResponse {
+            status: "ok",
+            service: "Jamey 3.0",
+            version: "3.0.0",
+            components: crate::health::ComponentHealth {
+                database: crate::health::ComponentStatus {
+                    status: "unknown",
+                    message: "Health checker not configured".into(),
+                },
+                memory: crate::health::ComponentStatus {
+                    status: "unknown",
+                    message: "Health checker not configured".into(),
+                },
+                mqtt: None,
+            },
+            metrics: crate::health::SystemMetrics {
+                disk_free_bytes: 0,
+                memory_usage_bytes: None,
+                uptime_seconds: 0,
+            },
+        })
     }
 }
 
 /// Metrics endpoint
+///
+/// This relies on the `PrometheusHandle` installed by the global metrics
+/// initialization in [`crate::metrics::init_metrics`](src/metrics/mod.rs:10).
+/// If no handle is available, we return a 500 to signal misconfiguration.
 async fn metrics(State(state): State<AppState>) -> (StatusCode, String) {
     if let Some(handle) = &state.metrics_handle {
-        match handle.render() {
-            Ok(metrics) => (StatusCode::OK, metrics),
-            Err(e) => {
-                error!("Failed to render metrics: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Failed to render metrics".to_string())
-            }
-        }
+        let metrics = handle.render();
+        (StatusCode::OK, metrics)
     } else {
-        match metrics_exporter_prometheus::encode_to_string() {
-            Ok(metrics) => (StatusCode::OK, metrics),
-            Err(e) => {
-                error!("Failed to encode metrics: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Failed to encode metrics".to_string())
-            }
-        }
+        error!("Metrics endpoint called but no Prometheus handle is configured");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Metrics exporter not initialized".to_string(),
+        )
+    }
+}
+
+/// CSRF token endpoint wrapper (extracts CSRF from AppState)
+async fn get_csrf_token_wrapper(State(state): State<AppState>) -> Result<Json<serde_json::Value>, StatusCode> {
+    if let Some(csrf) = &state.csrf_protection {
+        crate::security::get_csrf_token(State(csrf.clone())).await
+    } else {
+        Ok(Json(serde_json::json!({
+            "token": "",
+            "enabled": false,
+            "error": "CSRF protection not configured"
+        })))
     }
 }
 
@@ -237,9 +269,8 @@ pub async fn create_app(
     mqtt: Option<Arc<MqttClient>>,
     soul: Option<Arc<crate::soul::SoulStorage>>,
 ) -> anyhow::Result<Router> {
-    // Initialize metrics
+    // Initialize metrics (global recorder + handle for scraping)
     let metrics_handle = init_metrics().await?;
-    let prometheus_handle = PrometheusBuilder::new().install_recorder().ok();
 
     // Initialize memory system
     let data_dir = PathBuf::from("data/memory");
@@ -302,7 +333,7 @@ pub async fn create_app(
         per_key_rate_limiter: Some(per_key_rate_limiter.clone()),
         consciousness,
         jwt_auth,
-        metrics_handle: prometheus_handle,
+        metrics_handle: Some(metrics_handle),
         csrf_protection: Some(csrf_protection.clone()),
     };
 
@@ -311,14 +342,6 @@ pub async fn create_app(
         requests_per_second: 50,  // Adjust based on your needs
         burst_size: 100,
     };
-
-    // Build middleware stack
-    let middleware = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_http())
-        .layer(tower::layer::layer_fn(|s| MetricsMiddleware::new(s)))
-        // Global rate limiting (fallback)
-        .layer(tower::layer::layer_fn(move |s| RateLimitMiddleware::new(s, rate_limit.clone())))
-        .into_inner();
 
     // Configure CORS from environment variables (SECURE - fixes vulnerability)
     let cors_layer = create_cors_layer();
@@ -330,7 +353,7 @@ pub async fn create_app(
         .route("/health", get(health_detailed))
         .route("/metrics", get(metrics))
         // CSRF token endpoint (public, for getting tokens)
-        .route("/csrf-token", get(get_csrf_token))
+        .route("/csrf-token", get(get_csrf_token_wrapper))
         // Protected endpoints
         .route("/evaluate", post(evaluate_action))
         .route("/rules", get(get_rules))
@@ -354,7 +377,7 @@ pub async fn create_app(
     let app = app
         .with_state(state)
         // Add security components to request extensions for middleware access
-        .layer(axum::middleware::from_fn(move |mut request: Request, next: Next| {
+        .layer(axum::middleware::from_fn(move |mut request: axum::extract::Request, next: Next| {
             let ddos = ddos_protection.clone();
             let threat = threat_detection.clone();
             let incident = incident_response.clone();
@@ -381,10 +404,15 @@ pub async fn create_app(
             per_key_rate_limiter.clone(),
             crate::api::per_key_rate_limit::per_key_rate_limit_middleware,
         ))
-        .layer(middleware)
+        // Request tracing
+        .layer(TraceLayer::new_for_http())
+        // Metrics middleware
+        .layer(tower::layer::layer_fn(|s| MetricsMiddleware::new(s)))
+        // Global rate limiting (fallback)
+        .layer(tower::layer::layer_fn(move |s| RateLimitMiddleware::new(s, rate_limit.clone())))
         // Security headers
         .layer(middleware::from_fn(security_headers_middleware))
-        // Global rate limiting (fallback)
+        // Global rate limiting middleware based on security module
         .layer(middleware::from_fn(rate_limit_middleware))
         // SECURE CORS (fixes vulnerability - no longer allows all origins)
         .layer(cors_layer);

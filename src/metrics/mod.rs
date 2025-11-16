@@ -3,6 +3,7 @@ use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::time::{Duration, Instant};
 use tokio::sync::OnceCell;
 use tracing::{info, warn};
+use axum::body::Body;
 
 /// Global metrics registry
 static METRICS: OnceCell<PrometheusHandle> = OnceCell::const_new();
@@ -32,19 +33,19 @@ pub fn record_http_request(
 ) {
     metrics::counter!(
         "http_requests_total",
+        1,
         "method" => method.to_string(),
         "path" => path.to_string(),
         "status" => status.to_string(),
-    )
-    .increment(1);
+    );
 
     metrics::histogram!(
         "http_request_duration_seconds",
+        duration.as_secs_f64(),
         "method" => method.to_string(),
         "path" => path.to_string(),
         "status" => status.to_string(),
-    )
-    .record(duration.as_secs_f64());
+    );
 }
 
 /// Record memory system metrics
@@ -55,17 +56,17 @@ pub fn record_memory_metrics(
 ) {
     metrics::counter!(
         "memory_operations_total",
+        1,
         "layer" => layer.to_string(),
         "operation" => operation.to_string(),
-    )
-    .increment(1);
+    );
 
     metrics::histogram!(
         "memory_operation_duration_seconds",
+        duration.as_secs_f64(),
         "layer" => layer.to_string(),
         "operation" => operation.to_string(),
-    )
-    .record(duration.as_secs_f64());
+    );
 }
 
 /// Record MQTT metrics
@@ -76,11 +77,11 @@ pub fn record_mqtt_metrics(
 ) {
     metrics::counter!(
         "mqtt_operations_total",
+        1,
         "topic" => topic.to_string(),
         "operation" => operation.to_string(),
         "success" => success.to_string(),
-    )
-    .increment(1);
+    );
 }
 
 /// Record system metrics
@@ -89,18 +90,18 @@ pub fn record_system_metrics(
     disk_free_bytes: u64,
     uptime_seconds: u64,
 ) {
-    metrics::gauge!("system_memory_bytes").set(memory_bytes as f64);
-    metrics::gauge!("system_disk_free_bytes").set(disk_free_bytes as f64);
-    metrics::gauge!("system_uptime_seconds").set(uptime_seconds as f64);
+    metrics::gauge!("system_memory_bytes", memory_bytes as f64);
+    metrics::gauge!("system_disk_free_bytes", disk_free_bytes as f64);
+    metrics::gauge!("system_uptime_seconds", uptime_seconds as f64);
 }
 
 /// Record memory index size
 pub fn record_memory_index_size(layer: &str, size_bytes: u64) {
     metrics::gauge!(
         "memory_index_size_bytes",
+        size_bytes as f64,
         "layer" => layer.to_string(),
-    )
-    .set(size_bytes as f64);
+    );
 }
 
 /// Record backup operation metrics
@@ -112,21 +113,22 @@ pub fn record_backup_operation(
 ) {
     metrics::counter!(
         "backup_operations_total",
+        1,
         "status" => status.to_string(),
         "component" => component.to_string(),
-    )
-    .increment(1);
+    );
     
     if let Some(dur) = duration {
-        metrics::histogram!("backup_duration_seconds").record(dur.as_secs_f64());
+        metrics::histogram!("backup_duration_seconds", dur.as_secs_f64());
     }
     
     if let Some(size) = size_bytes {
-        metrics::gauge!("backup_size_bytes").set(size as f64);
+        metrics::gauge!("backup_size_bytes", size as f64);
     }
 }
 
 /// Middleware to collect HTTP metrics
+#[derive(Clone)]
 pub struct MetricsMiddleware<S> {
     inner: S,
 }
@@ -137,9 +139,11 @@ impl<S> MetricsMiddleware<S> {
     }
 }
 
-impl<S> tower::Service<hyper::Request<hyper::Body>> for MetricsMiddleware<S>
+impl<S> tower::Service<hyper::Request<Body>> for MetricsMiddleware<S>
 where
-    S: tower::Service<hyper::Request<hyper::Body>, Response = hyper::Response<hyper::Body>>,
+    S: tower::Service<hyper::Request<Body>, Response = hyper::Response<Body>>,
+    S::Future: Send + 'static,
+    S::Error: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -149,7 +153,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
+    fn call(&mut self, req: hyper::Request<Body>) -> Self::Future {
         let start = Instant::now();
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
@@ -185,6 +189,7 @@ impl Default for RateLimitConfig {
 }
 
 /// Rate limiting middleware using token bucket algorithm
+#[derive(Clone)]
 pub struct RateLimitMiddleware<S> {
     inner: S,
     limiter: governor::RateLimiter<governor::state::NotKeyed, governor::state::InMemoryState, governor::clock::DefaultClock>,
@@ -205,9 +210,11 @@ impl<S> RateLimitMiddleware<S> {
     }
 }
 
-impl<S> tower::Service<hyper::Request<hyper::Body>> for RateLimitMiddleware<S>
+impl<S> tower::Service<hyper::Request<Body>> for RateLimitMiddleware<S>
 where
-    S: tower::Service<hyper::Request<hyper::Body>, Response = hyper::Response<hyper::Body>>,
+    S: tower::Service<hyper::Request<Body>, Response = hyper::Response<Body>>,
+    S::Future: Send + 'static,
+    S::Error: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -217,24 +224,27 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
+    fn call(&mut self, req: hyper::Request<Body>) -> Self::Future {
         // Check rate limit
         if self.limiter.check().is_err() {
             let response = hyper::Response::builder()
                 .status(429)
-                .body(hyper::Body::from("Rate limit exceeded"))
+                .body(Body::from("Rate limit exceeded"))
                 .unwrap();
-            return Box::pin(std::future::ready(Ok(response)));
+
+            return Box::pin(async move { Ok(response) });
         }
 
-        self.inner.call(req)
+        let future = self.inner.call(req);
+
+        Box::pin(async move { future.await })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::{Body, Request, Response};
+    use hyper::{body::Body, Request, Response};
     use tower::{Service, ServiceExt};
     use std::convert::Infallible;
 

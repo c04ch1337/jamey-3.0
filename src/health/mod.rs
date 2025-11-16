@@ -218,8 +218,8 @@ impl HealthChecker {
         let memory_usage_bytes = if cfg!(target_os = "linux") {
             std::fs::read_to_string("/proc/self/statm")
                 .ok()
-                .and_then(|s| s.split_whitespace().next())
-                .and_then(|pages| pages.parse::<u64>().ok())
+                .and_then(|s| s.split_whitespace().next().map(|p| p.to_string()))
+                .and_then(|pages_str| pages_str.parse::<u64>().ok())
                 .map(|pages| pages * 4096)
         } else {
             None

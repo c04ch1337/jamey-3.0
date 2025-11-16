@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE api_keys SET revoked_at = datetime('now') WHERE key_hash = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "dfd44241fc77697535b571a76c097764588fe1a4125deff89adb35463c1c2ca7"
+}

@@ -69,7 +69,12 @@ pub struct ToggleSubsystemResponse {
 pub async fn get_metrics(
     State(state): State<AppState>,
 ) -> Result<Json<ConsciousnessMetricsResponse>, StatusCode> {
-    let metrics = state.consciousness.get_metrics().await;
+    let engine = state
+        .consciousness
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let metrics = engine.get_metrics().await;
     
     info!("Retrieved consciousness metrics: Φ={}", metrics.phi_value);
     
@@ -131,10 +136,18 @@ pub async fn process_information(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    match state.consciousness.process_information(&request.content).await {
+    let engine = state
+        .consciousness
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    match engine.process_information(&request.content).await {
         Ok(_) => {
-            let metrics = state.consciousness.get_metrics().await;
-            info!("Processed information through consciousness system: Φ={}", metrics.phi_value);
+            let metrics = engine.get_metrics().await;
+            info!(
+                "Processed information through consciousness system: Φ={}",
+                metrics.phi_value
+            );
             Ok(Json(ProcessResponse {
                 phi_value: metrics.phi_value,
                 attention_focus: metrics.attention_focus,
@@ -142,7 +155,10 @@ pub async fn process_information(
             }))
         }
         Err(e) => {
-            error!("Failed to process information through consciousness system: {}", e);
+            error!(
+                "Failed to process information through consciousness system: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

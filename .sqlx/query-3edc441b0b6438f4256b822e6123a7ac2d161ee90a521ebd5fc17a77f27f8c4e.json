@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE api_keys SET expires_at = ?, revoked_at = NULL WHERE key_hash = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3edc441b0b6438f4256b822e6123a7ac2d161ee90a521ebd5fc17a77f27f8c4e"
+}

@@ -34,7 +34,7 @@ impl ApiKeyManager {
         let result = sqlx::query_as!(
             ApiKeyInfo,
             r#"
-            SELECT 
+            SELECT
                 id,
                 key_hash,
                 name,
@@ -44,7 +44,7 @@ impl ApiKeyManager {
                 last_used_at,
                 rate_limit_per_minute
             FROM api_keys
-            WHERE key_hash = ? 
+            WHERE key_hash = ?
             AND (expires_at IS NULL OR expires_at > datetime('now'))
             AND revoked_at IS NULL
             "#,
@@ -54,13 +54,17 @@ impl ApiKeyManager {
         .await?;
 
         if let Some(ref key_info) = result {
-            // Update last_used_at
-            sqlx::query!(
-                "UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?",
-                key_info.id
-            )
-            .execute(self.pool.as_ref())
-            .await?;
+            if let Some(id) = key_info.id {
+                // Update last_used_at
+                sqlx::query!(
+                    "UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?",
+                    id
+                )
+                .execute(self.pool.as_ref())
+                .await?;
+            } else {
+                warn!("ApiKeyInfo.id is NULL for key_hash {}", hash);
+            }
         }
 
         Ok(result)
@@ -117,7 +121,8 @@ impl ApiKeyManager {
         let old_key_id = old_key_info
             .as_ref()
             .ok_or_else(|| sqlx::Error::RowNotFound)?
-            .id;
+            .id
+            .expect("api_keys.id must not be NULL");
 
         let rate_limit = old_key_info
             .map(|k| k.rate_limit_per_minute)
@@ -157,6 +162,7 @@ impl ApiKeyManager {
         grace_period_days: u32,
     ) -> Result<(), sqlx::Error> {
         // Create rotation log entry
+        let grace_period_days_i64 = grace_period_days as i64;
         sqlx::query!(
             r#"
             INSERT INTO api_key_rotations (key_id, old_key_hash, new_key_name, grace_period_days, rotated_at)
@@ -165,7 +171,7 @@ impl ApiKeyManager {
             key_id,
             old_hash,
             new_key_name,
-            grace_period_days as i64
+            grace_period_days_i64
         )
         .execute(self.pool.as_ref())
         .await?;
@@ -182,6 +188,7 @@ impl ApiKeyManager {
         .fetch_optional(self.pool.as_ref())
         .await?
         .map(|k| k.id)
+        .flatten()
         .ok_or_else(|| sqlx::Error::RowNotFound)?;
 
         let rotations = sqlx::query_as!(
@@ -239,7 +246,7 @@ impl ApiKeyManager {
 /// API Key information
 #[derive(Debug)]
 pub struct ApiKeyInfo {
-    pub id: i64,
+    pub id: Option<i64>,
     pub key_hash: String,
     pub name: String,
     pub created_at: String,
@@ -252,8 +259,8 @@ pub struct ApiKeyInfo {
 /// Rotation history entry
 #[derive(Debug)]
 pub struct RotationHistory {
-    pub id: i64,
-    pub key_id: i64,
+    pub id: Option<i64>,
+    pub key_id: Option<i64>,
     pub old_key_hash: String,
     pub new_key_name: String,
     pub grace_period_days: i64,

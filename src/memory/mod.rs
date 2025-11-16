@@ -302,7 +302,7 @@ impl MemorySystem {
             let top_docs = searcher.search(&query, &TopDocs::with_limit(limit))?;
 
             for (_score, doc_address) in top_docs {
-                let doc = searcher.doc(doc_address)?;
+                let doc: TantivyDocument = searcher.doc(doc_address)?;
                 
                 let memory = MemoryRecord {
                     id: doc.get_first(schema.get_field("id")?).and_then(|v| v.as_str()).unwrap_or("").to_string(),
@@ -382,10 +382,10 @@ impl MemorySystem {
         let top_docs = searcher.search(&query, &TopDocs::with_limit(10000))?;
 
         let mut deleted_count = 0;
-        let mut writer = index.writer(50_000_000)?;
+        let mut writer: IndexWriter<TantivyDocument> = index.writer(50_000_000)?;
 
         for (_score, doc_address) in top_docs {
-            let doc = searcher.doc(doc_address)?;
+            let doc: TantivyDocument = searcher.doc(doc_address)?;
             
             if let Some(timestamp_val) = doc.get_first(timestamp_field) {
                 if let Some(dt) = timestamp_val.as_datetime() {
