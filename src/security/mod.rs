@@ -19,6 +19,7 @@ pub mod security_middleware;
 pub mod secret_rotation;
 pub mod compliance;
 pub mod csrf;
+pub mod metrics;
 
 pub use auth::{JwtAuth, JwtClaims, AuthError};
 pub use headers::SecurityHeadersLayer;

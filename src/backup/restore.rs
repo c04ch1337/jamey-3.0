@@ -5,7 +5,7 @@ use tracing::{info, warn, error};
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 
-use crate::metrics::{self, increment_counter, record_histogram};
+use metrics::{counter, histogram};
 use crate::phoenix::vault::PhoenixVault;
 use super::{BackupMetadata, BackupStatus};
 
@@ -45,7 +45,7 @@ impl RestoreManager {
     ) -> Result<RestoreResult, Box<dyn std::error::Error + Send + Sync>> {
         let start_time = chrono::Utc::now();
         info!("Starting restore from backup {}", backup_id);
-        increment_counter!("restore_operations_total", "operation" => "start");
+        counter!("restore_operations_total", 1, "operation" => "start");
 
         let backup_path = self.backup_dir.join(backup_id.to_string());
         if !backup_path.exists() {
@@ -92,7 +92,7 @@ impl RestoreManager {
             .signed_duration_since(start_time)
             .num_seconds() as u64;
 
-        record_histogram!("restore_duration_seconds", duration as f64);
+        histogram!("restore_duration_seconds", duration as f64);
 
         let result = RestoreResult {
             backup_id,
@@ -105,11 +105,11 @@ impl RestoreManager {
         match result.failed_components.is_empty() {
             true => {
                 info!("Restore completed successfully");
-                increment_counter!("restore_operations_total", "operation" => "success");
+                counter!("restore_operations_total", 1, "operation" => "success");
             }
             false => {
                 warn!("Restore completed with failures");
-                increment_counter!("restore_operations_total", "operation" => "partial_failure");
+                counter!("restore_operations_total", 1, "operation" => "partial_failure");
             }
         }
 

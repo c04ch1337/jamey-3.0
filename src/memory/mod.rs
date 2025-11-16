@@ -1,4 +1,5 @@
 mod cache;
+mod metrics;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -7,16 +8,15 @@ use std::time::Duration;
 use std::sync::Arc;
 
 pub use cache::{SmartCache, CacheType, CacheValue, CacheConfig};
+pub use metrics::{MetricsRegistry, CacheMetrics};
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, TantivyDocument};
 use uuid::Uuid;
-use std::sync::Arc;
 use tracing::info;
 
 use crate::soul::SoulStorage;
-use crate::metrics;
 
 /// Represents a memory record
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,7 +212,7 @@ impl MemorySystem {
     ) -> anyhow::Result<Vec<MemoryRecord>> {
         // Try to get from cache first
         let cache_key = format!("search:{}:{}", layer.as_str(), query);
-        if let Some(CacheValue::Response(cached_json)) = self.cache.get(CacheType::Response, &cache_key).await {
+        if let Some(CacheValue::Response(cached_json)) = Arc::as_ref(&self.cache).get(CacheType::Response, &cache_key).await {
             if let Ok(records) = serde_json::from_str(&cached_json) {
                 info!("Cache hit for search query: {}", query);
                 return Ok(records);
@@ -307,7 +307,7 @@ impl MemorySystem {
     ) -> anyhow::Result<Vec<MemoryRecord>> {
         // Try to get from cache first
         let cache_key = format!("entity_memories:{}", entity_id);
-        if let Some(CacheValue::Response(cached_json)) = self.cache.get(CacheType::Response, &cache_key).await {
+        if let Some(CacheValue::Response(cached_json)) = Arc::as_ref(&self.cache).get(CacheType::Response, &cache_key).await {
             if let Ok(records) = serde_json::from_str(&cached_json) {
                 info!("Cache hit for entity memories: {}", entity_id);
                 return Ok(records);
@@ -399,7 +399,7 @@ impl MemorySystem {
         }
         
         // Record metric
-        metrics::record_memory_index_size(layer.as_str(), total_size);
+        crate::metrics::record_memory_index_size(layer.as_str(), total_size);
         
         Ok(total_size)
     }

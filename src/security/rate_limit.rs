@@ -114,6 +114,32 @@ impl RateLimiter {
         bucket.refill();
         bucket.tokens
     }
+
+    pub async fn check_request_limits(
+        &self,
+        endpoint: &str,
+        ip: &str,
+        user_id: Option<Uuid>,
+    ) -> bool {
+        // Check endpoint limit
+        if self.is_rate_limited(RateLimitKey::Endpoint(endpoint.to_string()), 1).await {
+            return true;
+        }
+
+        // Check IP limit
+        if self.is_rate_limited(RateLimitKey::IP(ip.to_string()), 1).await {
+            return true;
+        }
+
+        // Check user limit if user_id is provided
+        if let Some(user_id) = user_id {
+            if self.is_rate_limited(RateLimitKey::User(user_id), 1).await {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 #[cfg(test)]
@@ -149,36 +175,41 @@ mod tests {
         assert!(!bucket.try_consume(6)); // Not enough tokens
         assert!(bucket.try_consume(4)); // Can still consume remaining tokens
     }
-    pub async fn check_request_limits(
-        &self,
-        endpoint: &str,
-        ip: &str,
-        user_id: Option<Uuid>,
-    ) -> bool {
-        // Check endpoint limit
-        if self.is_rate_limited(RateLimitKey::Endpoint(endpoint.to_string()), 1).await {
-            return true;
-        }
-
-        // Check IP limit
-        if self.is_rate_limited(RateLimitKey::IP(ip.to_string()), 1).await {
-            return true;
-        }
-
-        // Check user limit if user_id is provided
-        if let Some(user_id) = user_id {
-            if self.is_rate_limited(RateLimitKey::User(user_id), 1).await {
-                return true;
-            }
-        }
-
-        false
-    }
 }
 
 // Create a new rate limiter with default configurations
 pub fn create_default_rate_limiter() -> RateLimiter {
     RateLimiter::new(DEFAULT_ENDPOINT_LIMIT, DEFAULT_REFILL_RATE)
+}
+
+// Rate limit middleware for Axum
+pub async fn rate_limit_middleware(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::http::StatusCode;
+    
+    // Create a default rate limiter (in production, this should be shared state)
+    let limiter = create_default_rate_limiter();
+    
+    let path = request.uri().path();
+    let remote_addr = request
+        .headers()
+        .get("x-forwarded-for")
+        .or_else(|| request.headers().get("x-real-ip"))
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // Check rate limit
+    if limiter.check_request_limits(path, &remote_addr, None).await {
+        return axum::response::Response::builder()
+            .status(StatusCode::TOO_MANY_REQUESTS)
+            .body(axum::body::Body::from("Rate limit exceeded"))
+            .unwrap();
+    }
+
+    next.run(request).await
 }
 
 #[cfg(test)]

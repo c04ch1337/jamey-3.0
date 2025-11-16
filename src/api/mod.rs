@@ -24,7 +24,7 @@ use axum::{
 use crate::conscience::{ConscienceEngine, MoralRule};
 use crate::consciousness::ConsciousnessEngine;
 use crate::memory::{MemoryLayer, MemorySystem};
-use crate::health::{HealthChecker, HealthResponse};
+use crate::health::{HealthChecker, HealthResponse, HealthManager};
 use crate::mqtt::MqttClient;
 use crate::metrics::{
     MetricsMiddleware, RateLimitMiddleware, RateLimitConfig,
@@ -74,17 +74,17 @@ async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     } else {
         // Fallback minimal response when no health checker is configured
         Json(HealthResponse {
-            status: "ok",
-            service: "Jamey 3.0",
-            version: "3.0.0",
+            status: "ok".to_string(),
+            service: "Jamey 3.0".to_string(),
+            version: "3.0.0".to_string(),
             components: crate::health::ComponentHealth {
                 database: crate::health::ComponentStatus {
-                    status: "unknown",
-                    message: "Health checker not configured".into(),
+                    status: "unknown".to_string(),
+                    message: "Health checker not configured".to_string(),
                 },
                 memory: crate::health::ComponentStatus {
-                    status: "unknown",
-                    message: "Health checker not configured".into(),
+                    status: "unknown".to_string(),
+                    message: "Health checker not configured".to_string(),
                 },
                 mqtt: None,
             },
@@ -104,17 +104,17 @@ async fn health_detailed(State(state): State<AppState>) -> Json<HealthResponse> 
         Json(response)
     } else {
         Json(HealthResponse {
-            status: "ok",
-            service: "Jamey 3.0",
-            version: "3.0.0",
+            status: "ok".to_string(),
+            service: "Jamey 3.0".to_string(),
+            version: "3.0.0".to_string(),
             components: crate::health::ComponentHealth {
                 database: crate::health::ComponentStatus {
-                    status: "unknown",
-                    message: "Health checker not configured".into(),
+                    status: "unknown".to_string(),
+                    message: "Health checker not configured".to_string(),
                 },
                 memory: crate::health::ComponentStatus {
-                    status: "unknown",
-                    message: "Health checker not configured".into(),
+                    status: "unknown".to_string(),
+                    message: "Health checker not configured".to_string(),
                 },
                 mqtt: None,
             },
@@ -307,12 +307,9 @@ pub async fn create_app(
         Some(key_manager.clone()),
     ));
 
-    // Initialize health checker
-    let health = Arc::new(HealthChecker::new(
-        pool.clone(),
-        memory.clone(),
-        mqtt.clone(),
-    ));
+    // Initialize health manager and checker
+    let health_manager = Arc::new(HealthManager::new(std::time::Duration::from_secs(30)));
+    let health = Arc::new(HealthChecker::new(health_manager.clone()));
 
     // Initialize JWT authentication (optional, for advanced auth)
     let jwt_auth = JwtAuth::new().ok().map(Arc::new);
@@ -355,17 +352,17 @@ pub async fn create_app(
             } else {
                 // Fallback minimal response when no health checker is configured
                 Json(HealthResponse {
-                    status: "ok",
-                    service: "Jamey 3.0",
-                    version: "3.0.0",
+                    status: "ok".to_string(),
+                    service: "Jamey 3.0".to_string(),
+                    version: "3.0.0".to_string(),
                     components: crate::health::ComponentHealth {
                         database: crate::health::ComponentStatus {
-                            status: "unknown",
-                            message: "Health checker not configured".into(),
+                            status: "unknown".to_string(),
+                            message: "Health checker not configured".to_string(),
                         },
                         memory: crate::health::ComponentStatus {
-                            status: "unknown",
-                            message: "Health checker not configured".into(),
+                            status: "unknown".to_string(),
+                            message: "Health checker not configured".to_string(),
                         },
                         mqtt: None,
                     },

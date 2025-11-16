@@ -22,7 +22,6 @@ This document serves as a comprehensive template and reference for the Jamey 3.0
 - **5-Layer Memory System**: Hierarchical memory storage with Tantivy indexing
 - **REST API**: Axum-based web interface
 - **CLI Interface**: Interactive chat with OpenRouter LLM integration
-- **React Frontend**: Real-time interaction interface
 
 ---
 
@@ -49,17 +48,6 @@ jamey-3.0/
 │   │   └── mod.rs              # OpenRouter API client
 │   └── memory/                  # Memory System
 │       └── mod.rs              # 5-Layer Memory System with Tantivy
-├── frontend/                     # React frontend application
-│   ├── src/
-│   │   ├── api/                # API client
-│   │   │   └── client.ts      # Typed API client with Axios
-│   │   ├── App.tsx            # Main application component
-│   │   ├── App.css            # Application styles
-│   │   ├── main.tsx           # React entry point with QueryClient
-│   │   └── index.css          # Global styles
-│   ├── package.json           # Frontend dependencies
-│   ├── vite.config.ts        # Vite configuration with API proxy
-│   └── tsconfig.json         # TypeScript configuration
 ├── migrations/                  # Database migrations
 │   ├── _sqlx_migrations.json # SQLx migration metadata
 │   └── 20241114000000_init.sql # Initial migration
@@ -107,14 +95,6 @@ jamey-3.0/
 - **Logging**: Tracing 0.1
 - **Collections**: DashMap 5.5 (thread-safe HashMap)
 - **Environment**: Dotenvy 0.15
-
-### Frontend (TypeScript/React)
-- **Framework**: React 18
-- **Build Tool**: Vite 7
-- **State Management**: TanStack Query 5.62
-- **HTTP Client**: Axios 1.7
-- **Validation**: Zod 3.24
-- **Language**: TypeScript (strict mode)
 
 ### AI/LLM
 - **Provider**: OpenRouter API
@@ -291,24 +271,11 @@ cargo run --bin jamey-cli
 ./scripts/chat.sh
 ```
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
 ### Building
 
 **Backend:**
 ```bash
 cargo build --release
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run build
 ```
 
 ### Testing
@@ -341,14 +308,6 @@ sqlx migrate add <migration_name>
 - **Async**: Use `async/await` throughout
 - **Modules**: Clear separation of concerns
 - **Thread Safety**: Use `Arc<>` for shared state
-
-### TypeScript/React
-
-- **Strict Mode**: Enabled
-- **Components**: Functional components with hooks
-- **State**: TanStack Query for server state
-- **Types**: Explicit typing, avoid `any`
-- **API**: Typed client in `src/api/client.ts`
 
 ### File Naming
 

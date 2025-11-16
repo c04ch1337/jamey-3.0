@@ -656,16 +656,14 @@ impl PhiCalculator {
         let len = content.chars().count() as f64;
 
         // Extract features in parallel
-        let base_features: Vec<f64> = vec![
+        let mut base_features: Vec<f64> = vec![
             self.extract_length_feature(content, len),
             self.extract_diversity_feature(content, len),
             self.extract_word_count_feature(content),
             self.extract_uppercase_feature(content, len),
             self.extract_punctuation_feature(content, len),
-        ]
-        .into_par_iter()
-        .map(|f| f.clamp(0.0, 1.0))
-        .collect();
+        ];
+        base_features.par_iter_mut().for_each(|f| *f = f.clamp(0.0, 1.0));
 
         // Run features through validation pipeline, but never fail the caller:
         // fall back to the raw features on error.
@@ -830,14 +828,13 @@ impl PhiCalculator {
         if len <= 0.0 {
             0.0
         } else {
-            let unique_chars = content.par_chars()
-                .collect::<std::collections::HashSet<_>>();
+            let unique_chars = content.chars().collect::<std::collections::HashSet<_>>();
             (unique_chars.len() as f64) / len
         }
     }
 
     fn extract_word_count_feature(&self, content: &str) -> f64 {
-        let word_count = content.par_split_whitespace().count() as f64;
+        let word_count = content.split_whitespace().count() as f64;
         if word_count <= 0.0 {
             0.0
         } else {
@@ -849,7 +846,7 @@ impl PhiCalculator {
         if len <= 0.0 {
             0.0
         } else {
-            let uppercase_count = content.par_chars()
+            let uppercase_count = content.chars()
                 .filter(|c| c.is_ascii_uppercase())
                 .count() as f64;
             uppercase_count / len
@@ -861,7 +858,7 @@ impl PhiCalculator {
             0.0
         } else {
             let punctuation_chars = ['.', ',', '!', '?', ';', ':'];
-            let punct_count = content.par_chars()
+            let punct_count = content.chars()
                 .filter(|c| punctuation_chars.contains(c))
                 .count() as f64;
             punct_count / len

@@ -26,7 +26,7 @@ pub fn init_telemetry() -> Result<()> {
                 "jamey-3-backend",
             )])),
         )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+        .install_batch(opentelemetry_sdk::runtime::TokioCurrentThread)?;
 
     // Create a tracing layer with the configured tracer
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);

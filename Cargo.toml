@@ -4,11 +4,87 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Core
 metrics = "0.21"
 sysinfo = "0.29"
 tokio = { version = "1.0", features = ["full"] }
 thiserror = "1.0"
 anyhow = "1.0"
+
+# Web framework
+axum = { version = "0.7", features = ["macros", "json"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+
+# Async
+async-trait = "0.1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# Search
+tantivy = "0.22"
+
+# Security
+jsonwebtoken = "9.2"
+rustls-pemfile = "2.0"
+rand = "0.8"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Logging & Telemetry
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.22"
+opentelemetry = "0.21"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio-current-thread"] }
+opentelemetry-otlp = "0.14"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+walkdir = "2.4"
+dotenvy = "0.15"
+strsim = "0.11"
+governor = "0.6"
+rayon = "1.8"
+
+# MQTT
+rumqttc = "0.12"
+tokio-rustls = "0.24"
+rustls = "0.20"
+
+# Tracing
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.2"
+
+# Crypto & Security
+sha2 = "0.10"
+aes-gcm = "0.10"
+time = "0.3"
+regex = "1.12"
+
+# Metrics
+metrics-exporter-prometheus = "0.12"
+prometheus = "0.13"
+lazy_static = "1.4"
+
+# Data structures
+dashmap = "5.5"
+ndarray = "0.16"
+moka = { version = "0.12", features = ["future"] }
+lru = "0.12"
 
 [dev-dependencies]
 tokio-test = "0.4"

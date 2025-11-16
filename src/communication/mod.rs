@@ -4,7 +4,7 @@ pub mod retry;
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, warn};
-use metrics::{counter, gauge};
+// Metrics macros are used with metrics:: prefix, not imported
 
 use metrics::ChannelMetricsCollector;
 use retry::{RetryConfig, retry_with_backoff};
@@ -19,8 +19,11 @@ pub enum Priority {
 }
 
 // Generic message wrapper for system communication
-#[derive(Debug)]
-pub struct Message<T> {
+#[derive(Debug, Clone)]
+pub struct Message<T> 
+where
+    T: Clone,
+{
     pub id: uuid::Uuid,
     pub priority: Priority,
     pub payload: T,
@@ -28,7 +31,7 @@ pub struct Message<T> {
     pub retry_count: u32,
 }
 
-impl<T> Message<T> {
+impl<T: Clone> Message<T> {
     pub fn new(payload: T, priority: Priority) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
@@ -76,14 +79,18 @@ pub enum CommError {
 }
 
 // Bounded channel wrapper with backpressure handling and retries
-pub struct BoundedChannel<T> {
+#[derive(Debug)]
+pub struct BoundedChannel<T: Clone> {
     sender: mpsc::Sender<Message<T>>,
     receiver: mpsc::Receiver<Message<T>>,
     config: ChannelConfig,
     metrics: ChannelMetricsCollector,
 }
 
-impl<T: Send + Clone + 'static> BoundedChannel<T> {
+impl<T: Send + Clone + 'static> BoundedChannel<T> 
+where
+    T: Clone,
+{
     pub fn new(name: &str, config: ChannelConfig) -> Self {
         let (sender, receiver) = mpsc::channel(config.capacity);
         Self {

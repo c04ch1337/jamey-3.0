@@ -3,6 +3,7 @@ pub mod api;
 pub mod backup;
 pub mod telemetry;
 pub mod cli;
+pub mod communication;
 pub mod config;
 pub mod conscience;
 pub mod consciousness;
@@ -25,5 +26,7 @@ pub use llm::OpenRouterClient;
 pub use mqtt::{MqttClient, MqttConfig, MqttError};
 pub use soul::{Emotion, SoulEntity, SoulStorage, TrustCalculator, EmpathyScorer};
 pub use security::{JwtAuth, JwtClaims, AuthError, SecurityHeadersLayer, RateLimitLayer};
-pub use backup::{BackupManager, BackupConfig, BackupManifest, BackupResult, RestoreManager, RestoreResult, BackupScheduler, ScheduleConfig};
+pub use backup::{BackupManager, BackupConfig};
+pub use backup::restore::{RestoreManager, RestoreResult};
+pub use phoenix::{BackupManifest, BackupScheduler};
 

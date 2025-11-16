@@ -149,7 +149,7 @@ impl MetricsRegistry {
     }
 
     pub fn get_metrics(&self, cache_type: CacheType) -> Option<CacheMetrics> {
-        self.metrics.get(&cache_type).map(|m| m.clone())
+        self.metrics.get(&cache_type).map(|m| m.value().clone())
     }
 
     pub fn get_all_stats(&self) -> Vec<(CacheType, CacheStats)> {
@@ -157,6 +157,25 @@ impl MetricsRegistry {
             .iter()
             .map(|entry| (*entry.key(), entry.value().get_stats()))
             .collect()
+    }
+}
+
+impl Clone for CacheMetrics {
+    fn clone(&self) -> Self {
+        Self {
+            hits: AtomicU64::new(self.hits.load(Ordering::Relaxed)),
+            misses: AtomicU64::new(self.misses.load(Ordering::Relaxed)),
+            memory_usage_bytes: AtomicU64::new(self.memory_usage_bytes.load(Ordering::Relaxed)),
+            allocated_capacity_bytes: AtomicU64::new(self.allocated_capacity_bytes.load(Ordering::Relaxed)),
+            total_get_latency_ns: AtomicU64::new(self.total_get_latency_ns.load(Ordering::Relaxed)),
+            get_operations: AtomicU64::new(self.get_operations.load(Ordering::Relaxed)),
+            total_insert_latency_ns: AtomicU64::new(self.total_insert_latency_ns.load(Ordering::Relaxed)),
+            insert_operations: AtomicU64::new(self.insert_operations.load(Ordering::Relaxed)),
+            eviction_count: AtomicU64::new(self.eviction_count.load(Ordering::Relaxed)),
+            last_eviction: AtomicI64::new(self.last_eviction.load(Ordering::Relaxed)),
+            resize_count: AtomicU64::new(self.resize_count.load(Ordering::Relaxed)),
+            last_resize: AtomicI64::new(self.last_resize.load(Ordering::Relaxed)),
+        }
     }
 }
 

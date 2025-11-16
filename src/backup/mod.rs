@@ -6,8 +6,10 @@ use serde::{Serialize, Deserialize};
 use tracing::{info, warn, error};
 use uuid::Uuid;
 
-use crate::phoenix::vault::PhoenixVault;
-use crate::metrics::{self, increment_counter, record_histogram};
+pub mod restore;
+
+use crate::phoenix::PhoenixVault;
+use metrics::{counter, histogram};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackupConfig {
@@ -61,7 +63,7 @@ impl BackupManager {
         let start_time = Utc::now();
         
         info!("Starting backup {}", backup_id);
-        increment_counter!("backup_operations_total", "operation" => "start");
+        counter!("backup_operations_total", 1, "operation" => "start");
 
         let backup_path = self.config.backup_dir.join(backup_id.to_string());
         tokio::fs::create_dir_all(&backup_path).await?;
@@ -71,7 +73,11 @@ impl BackupManager {
 
         // Backup database
         if self.config.components.contains(&"database".to_string()) {
-            match self.vault.backup_database(&backup_path, &mut self.vault.create_manifest()).await {
+            let mut manifest = crate::phoenix::BackupManifest::new(
+                uuid::Uuid::new_v4(),
+                chrono::Utc::now(),
+            );
+            match self.vault.backup_database(&backup_path, &mut manifest).await {
                 Ok(()) => {
                     info!("Database backup successful");
                     total_size += tokio::fs::metadata(backup_path.join("jamey.db.enc")).await?.len();
@@ -85,7 +91,11 @@ impl BackupManager {
 
         // Backup memory indices
         if self.config.components.contains(&"memory".to_string()) {
-            match self.vault.backup_memory_indices(&backup_path, &mut self.vault.create_manifest()).await {
+            let mut manifest = crate::phoenix::BackupManifest::new(
+                uuid::Uuid::new_v4(),
+                chrono::Utc::now(),
+            );
+            match self.vault.backup_memory_indices(&backup_path, &mut manifest).await {
                 Ok(()) => {
                     info!("Memory indices backup successful");
                     let memory_size = walkdir::WalkDir::new(backup_path.join("memory"))
@@ -106,8 +116,8 @@ impl BackupManager {
 
         // Calculate duration
         let duration = Utc::now().signed_duration_since(start_time).num_seconds() as u64;
-        record_histogram!("backup_duration_seconds", duration as f64);
-        record_histogram!("backup_size_bytes", total_size as f64);
+        histogram!("backup_duration_seconds", duration as f64);
+        histogram!("backup_size_bytes", total_size as f64);
 
         // Create metadata
         let status = if failed_components.is_empty() {
@@ -118,13 +128,14 @@ impl BackupManager {
             BackupStatus::Failed { reason: "All components failed".to_string() }
         };
 
+        let status_clone = status.clone();
         let metadata = BackupMetadata {
             id: backup_id,
             timestamp: start_time,
             components: self.config.components.clone(),
             size_bytes: total_size,
             duration_secs: duration,
-            status,
+            status: status_clone.clone(),
         };
 
         // Store metadata
@@ -136,15 +147,15 @@ impl BackupManager {
         match status {
             BackupStatus::Success => {
                 info!("Backup {} completed successfully", backup_id);
-                increment_counter!("backup_operations_total", "operation" => "success");
+                counter!("backup_operations_total", 1, "operation" => "success");
             }
             BackupStatus::Partial { .. } => {
                 warn!("Backup {} partially completed with failures: {:?}", backup_id, failed_components);
-                increment_counter!("backup_operations_total", "operation" => "partial");
+                counter!("backup_operations_total", 1, "operation" => "partial");
             }
             BackupStatus::Failed { .. } => {
                 error!("Backup {} failed completely", backup_id);
-                increment_counter!("backup_operations_total", "operation" => "failure");
+                counter!("backup_operations_total", 1, "operation" => "failure");
             }
         }
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{Duration, Instant};
 use tracing::{info, warn, error};
+use sysinfo::SystemExt;
 
 /// Represents the health status of a component
 #[derive(Debug, Clone)]
@@ -229,8 +230,15 @@ pub mod components {
             let start = Instant::now();
             
             // Get system memory info
-            let sys_info = sys_info::mem_info().unwrap_or_default();
-            let used_percent = ((sys_info.total - sys_info.free) as f64 / sys_info.total as f64) * 100.0;
+            let mut sys = sysinfo::System::new_all();
+            sys.refresh_all();
+            let total = sys.total_memory();
+            let used = sys.used_memory();
+            let used_percent = if total > 0 {
+                (used as f64 / total as f64) * 100.0
+            } else {
+                0.0
+            };
 
             let status = if used_percent >= self.allocation_threshold as f64 {
                 HealthStatus::Degraded {
@@ -284,6 +292,88 @@ pub mod components {
                 response_time: start.elapsed(),
             }
         }
+    }
+}
+
+// API-compatible types for health endpoints
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ComponentStatus {
+    pub status: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ComponentHealth {
+    pub database: ComponentStatus,
+    pub memory: ComponentStatus,
+    pub mqtt: Option<ComponentStatus>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SystemMetrics {
+    pub disk_free_bytes: u64,
+    pub memory_usage_bytes: Option<u64>,
+    pub uptime_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HealthResponse {
+    pub status: String,
+    pub service: String,
+    pub version: String,
+    pub components: ComponentHealth,
+    pub metrics: SystemMetrics,
+}
+
+/// Health checker that provides API-compatible health responses
+pub struct HealthChecker {
+    manager: Arc<HealthManager>,
+    start_time: Instant,
+}
+
+impl HealthChecker {
+    pub fn new(manager: Arc<HealthManager>) -> Self {
+        Self {
+            manager,
+            start_time: Instant::now(),
+        }
+    }
+
+    pub async fn check_liveness(&self) -> HealthResponse {
+        let system_health = self.manager.get_system_health().await;
+        let status = match system_health {
+            HealthStatus::Healthy => "ok".to_string(),
+            HealthStatus::Degraded { .. } => "degraded".to_string(),
+            HealthStatus::Unhealthy { .. } => "unhealthy".to_string(),
+        };
+
+        HealthResponse {
+            status,
+            service: "Jamey 3.0".to_string(),
+            version: "3.0.0".to_string(),
+            components: ComponentHealth {
+                database: ComponentStatus {
+                    status: "unknown".to_string(),
+                    message: "Health check not implemented".to_string(),
+                },
+                memory: ComponentStatus {
+                    status: "unknown".to_string(),
+                    message: "Health check not implemented".to_string(),
+                },
+                mqtt: None,
+            },
+            metrics: SystemMetrics {
+                disk_free_bytes: 0,
+                memory_usage_bytes: None,
+                uptime_seconds: self.start_time.elapsed().as_secs(),
+            },
+        }
+    }
+
+    pub async fn check_detailed(&self) -> HealthResponse {
+        self.check_liveness().await
     }
 }
 

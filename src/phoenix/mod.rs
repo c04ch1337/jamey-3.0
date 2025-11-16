@@ -7,7 +7,7 @@
 //! 
 //! Uses AES-256-GCM encryption and supports scheduled backups.
 
-mod vault;
+pub mod vault;
 mod backup;
 mod restore;
 mod encryption;
