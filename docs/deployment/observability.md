@@ -1,25 +1,14 @@
 # Jamey 3.0 Observability Guide
 
-This document provides an overview of the monitoring and observability infrastructure for the Jamey 3.0 project. The entire stack is containerized and can be launched with a single command.
+This document provides an overview of monitoring and observability for the Jamey 3.0 project.
 
 ## Architecture
 
-The observability stack consists of the following services:
+Jamey 3.0 includes built-in metrics and health endpoints for monitoring:
 
-- **Grafana**: The central hub for visualization. It provides dashboards for logs, metrics, and traces.
-- **Loki**: A lightweight, horizontally-scalable log aggregation system.
-- **Promtail**: The agent that collects logs from containers and ships them to Loki.
-- **Prometheus**: A time-series database and monitoring system that scrapes metrics from the backend.
-- **Jaeger**: An end-to-end distributed tracing system.
-- **Alertmanager**: Handles alerts sent by Prometheus and routes them to notification channels.
-
-## How to Launch
-
-To launch the entire application and observability stack, run the following command from the root of the project:
-
-```bash
-docker-compose up -d
-```
+- **Health Endpoint**: `/health` - Returns service status
+- **Metrics Endpoint**: `/metrics` - Prometheus-compatible metrics
+- **Logging**: Structured JSON logging via tracing
 
 ## Accessing the Tools
 

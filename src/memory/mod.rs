@@ -1,14 +1,19 @@
+mod cache;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
+use std::sync::Arc;
+
+pub use cache::{SmartCache, CacheType, CacheValue, CacheConfig};
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, TantivyDocument};
 use uuid::Uuid;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::soul::SoulStorage;
 use crate::metrics;
@@ -51,6 +56,7 @@ pub struct MemorySystem {
     indices: std::collections::HashMap<MemoryLayer, Index>,
     data_dir: PathBuf,
     soul_storage: Option<Arc<SoulStorage>>, // Added for soul integration
+    cache: Arc<SmartCache>, // Added smart caching system
 }
 
 impl MemorySystem {
@@ -94,10 +100,11 @@ impl MemorySystem {
             indices.insert(layer, index);
         }
 
-        Ok(Self { 
-            indices, 
+        Ok(Self {
+            indices,
             data_dir,
             soul_storage: None,
+            cache: Arc::new(SmartCache::new()),
         })
     }
 
@@ -196,12 +203,23 @@ impl MemorySystem {
     }
 
     /// Search memories in a specific layer
+    /// Try to get cached search results first, fallback to index search
     pub async fn search(
         &self,
         layer: MemoryLayer,
         query: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<MemoryRecord>> {
+        // Try to get from cache first
+        let cache_key = format!("search:{}:{}", layer.as_str(), query);
+        if let Some(CacheValue::Response(cached_json)) = self.cache.get(CacheType::Response, &cache_key).await {
+            if let Ok(records) = serde_json::from_str(&cached_json) {
+                info!("Cache hit for search query: {}", query);
+                return Ok(records);
+            }
+        }
+
+        // If not in cache, search index
         let index = self.indices.get(&layer).ok_or_else(|| {
             anyhow::anyhow!("Index not found for layer: {:?}", layer)
         })?;
@@ -267,15 +285,35 @@ impl MemorySystem {
             });
         }
 
+        // Cache the results
+        if !results.is_empty() {
+            if let Ok(json) = serde_json::to_string(&results) {
+                self.cache.insert(
+                    CacheType::Response,
+                    cache_key,
+                    CacheValue::Response(json)
+                ).await?;
+            }
+        }
+
         Ok(results)
     }
 
-    /// Get memories linked to a specific entity
+    /// Get memories linked to a specific entity, using cache when available
     pub async fn get_entity_memories(
         &self,
         entity_id: &str,
         limit: usize,
     ) -> anyhow::Result<Vec<MemoryRecord>> {
+        // Try to get from cache first
+        let cache_key = format!("entity_memories:{}", entity_id);
+        if let Some(CacheValue::Response(cached_json)) = self.cache.get(CacheType::Response, &cache_key).await {
+            if let Ok(records) = serde_json::from_str(&cached_json) {
+                info!("Cache hit for entity memories: {}", entity_id);
+                return Ok(records);
+            }
+        }
+
         let mut all_memories = Vec::new();
 
         // Search each layer for memories linked to this entity
@@ -327,6 +365,17 @@ impl MemorySystem {
 
         // Limit total results
         all_memories.truncate(limit);
+
+        // Cache the results if we found any
+        if !all_memories.is_empty() {
+            if let Ok(json) = serde_json::to_string(&all_memories) {
+                self.cache.insert(
+                    CacheType::Response,
+                    cache_key,
+                    CacheValue::Response(json)
+                ).await?;
+            }
+        }
 
         Ok(all_memories)
     }
@@ -395,7 +444,7 @@ impl MemorySystem {
                     if doc_timestamp < cutoff {
                         // Get document ID for deletion
                         if let Some(id_val) = doc.get_first(id_field) {
-                            if let Some(id_str) = id_val.as_str() {
+                            if let Some(_id_str) = id_val.as_str() {
                                 // Note: Tantivy deletion requires Term, not string
                                 // This is a simplified approach - full implementation would
                                 // need to track document addresses or use a different strategy

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Model capabilities for task matching
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -5,14 +5,9 @@
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::collections::{HashMap, VecDeque, BinaryHeap, HashSet};
-use std::cmp::Ordering;
+use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
-use super::global_workspace::WorkspaceContent;
-use std::io::Cursor;
-use flate2::write::GzEncoder;
-use flate2::Compression;
 
 // Lightweight scaffolding types for the attention subsystem.
 // These provide the minimal API required by ConsciousnessEngine and
@@ -29,6 +24,7 @@ pub enum AttentionState {
 /// In the future this can incorporate real NLP / embedding logic.
 #[derive(Clone, Debug)]
 struct SemanticAnalyzer {
+    #[allow(dead_code)]
     window_size: usize,
 }
 
@@ -37,6 +33,7 @@ impl SemanticAnalyzer {
         Self { window_size }
     }
 
+    #[allow(dead_code)]
     fn analyze(&self, _content: &str) -> f32 {
         // For now return a neutral constant score.
         self.window_size as f32
@@ -46,9 +43,13 @@ impl SemanticAnalyzer {
 /// Heuristic relevance score calculator placeholder.
 #[derive(Clone, Debug)]
 struct RelevanceScore {
+    #[allow(dead_code)]
     base: f32,
+    #[allow(dead_code)]
     novelty_weight: f32,
+    #[allow(dead_code)]
     urgency_weight: f32,
+    #[allow(dead_code)]
     context_weight: f32,
 }
 
@@ -62,6 +63,7 @@ impl RelevanceScore {
         }
     }
 
+    #[allow(dead_code)]
     fn score(&self, _content: &str) -> f32 {
         // Basic combined weight for now.
         self.base + self.novelty_weight + self.urgency_weight + self.context_weight
@@ -71,8 +73,11 @@ impl RelevanceScore {
 /// Static weighting configuration for attention decisions.
 #[derive(Clone, Debug)]
 struct AttentionWeights {
+    #[allow(dead_code)]
     focus_weight: f32,
+    #[allow(dead_code)]
     recency_weight: f32,
+    #[allow(dead_code)]
     salience_weight: f32,
 }
 
@@ -89,7 +94,9 @@ impl AttentionWeights {
 /// Simple finite-state machine for attention states.
 #[derive(Clone, Debug)]
 struct AttentionStateMachine {
+    #[allow(dead_code)]
     max_concurrent: usize,
+    #[allow(dead_code)]
     state_cooldown: Duration,
     current_state: AttentionState,
 }
@@ -134,6 +141,7 @@ struct AttentionQueueItem {
 struct AttentionQueue {
     items: Arc<RwLock<VecDeque<AttentionQueueItem>>>,
     max_size: usize,
+    #[allow(dead_code)]
     min_priority: f32,
 }
 
@@ -167,7 +175,9 @@ impl AttentionQueue {
 #[derive(Clone, Debug)]
 struct ConflictResolver {
     lock_ttl: Duration,
+    #[allow(dead_code)]
     max_retries: u32,
+    #[allow(dead_code)]
     threshold: f32,
     active_locks: Arc<RwLock<HashMap<String, Instant>>>,
 }
@@ -218,8 +228,10 @@ impl ConflictResolver {
 #[derive(Clone, Debug)]
 pub struct AttentionRecord {
     focus: String,
+    #[allow(dead_code)]
     state: AttentionState,
     duration: Duration,
+    #[allow(dead_code)]
     context: HashMap<String, f32>,
     timestamp: DateTime<Utc>,
 }
@@ -296,6 +308,7 @@ impl AttentionHistory {
 pub struct AttentionPattern {
     sequence: Vec<String>,
     frequency: usize,
+    #[allow(dead_code)]
     avg_duration: Duration,
     last_seen: DateTime<Utc>,
 }
@@ -313,6 +326,7 @@ pub struct TemporalContext {
 pub struct AttentionStatistics {
     total_occurrences: usize,
     total_duration: Duration,
+    #[allow(dead_code)]
     avg_priority: f32,
     last_occurrence: DateTime<Utc>,
 }
@@ -418,10 +432,13 @@ pub enum Resolution {
 // Update AttentionSchema to use history system
 pub struct AttentionSchema {
     current_focus: Arc<RwLock<String>>,
+    #[allow(dead_code)]
     semantic_analyzer: SemanticAnalyzer,
+    #[allow(dead_code)]
     relevance_scorer: RelevanceScore,
+    #[allow(dead_code)]
     weights: AttentionWeights,
-    state_machine: AttentionStateMachine,
+    state_machine: Arc<RwLock<AttentionStateMachine>>,
     queue: AttentionQueue,
     conflict_resolver: ConflictResolver,
     history: AttentionHistory,
@@ -435,7 +452,7 @@ impl AttentionSchema {
             semantic_analyzer: SemanticAnalyzer::new(5),
             relevance_scorer: RelevanceScore::new(0.0, 0.0, 0.0, 1.0),
             weights: AttentionWeights::new(),
-            state_machine: AttentionStateMachine::new(3, Duration::from_millis(100)),
+            state_machine: Arc::new(RwLock::new(AttentionStateMachine::new(3, Duration::from_millis(100)))),
             queue: AttentionQueue::new(20, 0.5),
             conflict_resolver: ConflictResolver::new(0.7, Duration::from_millis(200), 3),
             history: AttentionHistory::new(1000, Duration::from_secs(3600 * 24)), // 24 hour retention
@@ -443,36 +460,59 @@ impl AttentionSchema {
         }
     }
 
-    // [Previous methods remain unchanged]
+    /// Update attention schema with new broadcast and predictions
+    pub async fn update(&self, broadcast: &str, predictions: &str) -> Result<()> {
+        // Combine broadcast and predictions for attention processing
+        let content = format!("{} {}", broadcast, predictions);
+        
+        // Enqueue the content for processing
+        self.queue.enqueue(content).await?;
+        
+        // Process the queue
+        self.process_queue().await?;
+        
+        Ok(())
+    }
+
+    /// Get current attention focus
+    pub async fn current_focus(&self) -> String {
+        self.current_focus.read().await.clone()
+    }
 
     /// Process attention queue with history tracking
     pub async fn process_queue(&self) -> Result<()> {
         while let Some(item) = self.queue.dequeue().await {
-            let current_state = self.state_machine.current_state().await;
+            let current_state = {
+                let state_machine = self.state_machine.read().await;
+                state_machine.current_state().await
+            };
             
             match self.conflict_resolver.resolve_conflict(&current_state, &item).await {
                 Resolution::Allow => {
                     if self.conflict_resolver.acquire_lock(item.content.clone()).await? {
-                        if let Ok(transitioned) = self.state_machine.transition(item.content.clone()).await {
-                            if transitioned {
-                                let start_time = Instant::now();
-                                let mut focus = self.current_focus.write().await;
-                                *focus = item.content.clone();
-                                
-                                // Create and store attention record
-                                let record = AttentionRecord {
-                                    focus: item.content.clone(),
-                                    state: current_state.clone(),
-                                    duration: start_time.elapsed(),
-                                    context: HashMap::new(), // Could be populated with relevant context
-                                    timestamp: Utc::now(),
-                                };
-                                
-                                self.history.add_record(record.clone()).await?;
-                                self.temporal_context.write().await.update(record);
-                                
-                                metrics::counter!("consciousness.attention.shifts_total", 1);
-                            }
+                        let transitioned = {
+                            let mut state_machine = self.state_machine.write().await;
+                            state_machine.transition(item.content.clone()).await?
+                        };
+                        
+                        if transitioned {
+                            let start_time = Instant::now();
+                            let mut focus = self.current_focus.write().await;
+                            *focus = item.content.clone();
+                            
+                            // Create and store attention record
+                            let record = AttentionRecord {
+                                focus: item.content.clone(),
+                                state: current_state.clone(),
+                                duration: start_time.elapsed(),
+                                context: HashMap::new(), // Could be populated with relevant context
+                                timestamp: Utc::now(),
+                            };
+                            
+                            self.history.add_record(record.clone()).await?;
+                            self.temporal_context.write().await.update(record);
+                            
+                            metrics::counter!("consciousness.attention.shifts_total", 1);
                         }
                         self.conflict_resolver.release_lock(&item.content).await;
                     }

@@ -1,8 +1,7 @@
-use metrics::{Counter, Gauge, Histogram, Key, KeyName, Unit};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::time::{Duration, Instant};
+use std::sync::Arc;
 use tokio::sync::OnceCell;
-use tracing::{info, warn};
 use axum::body::Body;
 
 /// Global metrics registry
@@ -188,11 +187,22 @@ impl Default for RateLimitConfig {
     }
 }
 
-/// Rate limiting middleware using token bucket algorithm
-#[derive(Clone)]
+//// Rate limiting middleware using token bucket algorithm
 pub struct RateLimitMiddleware<S> {
     inner: S,
-    limiter: governor::RateLimiter<governor::state::NotKeyed, governor::state::InMemoryState, governor::clock::DefaultClock>,
+    limiter: Arc<governor::RateLimiter<governor::state::NotKeyed, governor::state::InMemoryState, governor::clock::DefaultClock>>,
+}
+
+impl<S> Clone for RateLimitMiddleware<S>
+where
+    S: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            limiter: self.limiter.clone(),
+        }
+    }
 }
 
 impl<S> RateLimitMiddleware<S> {
@@ -205,7 +215,7 @@ impl<S> RateLimitMiddleware<S> {
 
         Self {
             inner,
-            limiter: RateLimiter::direct(quota),
+            limiter: Arc::new(RateLimiter::direct(quota)),
         }
     }
 }

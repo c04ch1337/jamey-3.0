@@ -28,12 +28,11 @@ use crate::health::{HealthChecker, HealthResponse};
 use crate::mqtt::MqttClient;
 use crate::metrics::{
     MetricsMiddleware, RateLimitMiddleware, RateLimitConfig,
-    init_metrics, record_http_request,
+    init_metrics,
 };
 // These types are already imported via pub use statements above
 use crate::security::JwtAuth;
 use crate::security::validation::{ActionInput, RuleInput, validate_input};
-use crate::security::auth::{login, jwt_auth_middleware};
 use crate::security::headers::security_headers_middleware;
 use crate::security::rate_limit::rate_limit_middleware;
 use crate::security::{
@@ -47,11 +46,10 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use sqlx::SqlitePool;
-use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::{error, info, warn};
-use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use metrics_exporter_prometheus::PrometheusHandle;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -68,6 +66,7 @@ pub struct AppState {
 }
 
 /// Basic health check (liveness probe)
+#[allow(dead_code)]
 async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     if let Some(health_checker) = &state.health {
         let response = health_checker.check_liveness().await;
@@ -349,7 +348,35 @@ pub async fn create_app(
     // Build the application with security layers
     let mut app = Router::new()
         // Public endpoints (no authentication required)
-        .route("/", get(health))
+        .route("/", get(|State(state): State<AppState>| async move {
+            if let Some(health_checker) = &state.health {
+                let response = health_checker.check_liveness().await;
+                Json(response)
+            } else {
+                // Fallback minimal response when no health checker is configured
+                Json(HealthResponse {
+                    status: "ok",
+                    service: "Jamey 3.0",
+                    version: "3.0.0",
+                    components: crate::health::ComponentHealth {
+                        database: crate::health::ComponentStatus {
+                            status: "unknown",
+                            message: "Health checker not configured".into(),
+                        },
+                        memory: crate::health::ComponentStatus {
+                            status: "unknown",
+                            message: "Health checker not configured".into(),
+                        },
+                        mqtt: None,
+                    },
+                    metrics: crate::health::SystemMetrics {
+                        disk_free_bytes: 0,
+                        memory_usage_bytes: None,
+                        uptime_seconds: 0,
+                    },
+                })
+            }
+        }))
         .route("/health", get(health_detailed))
         .route("/metrics", get(metrics))
         // CSRF token endpoint (public, for getting tokens)
@@ -370,10 +397,18 @@ pub async fn create_app(
 
     // Add JWT login endpoint if JWT auth is available
     if state.jwt_auth.is_some() {
-        app = app.route("/login", post(login));
+        app = app.route("/login", post(|State(state): State<AppState>, Json(request): Json<crate::security::auth::LoginRequest>| async move {
+            // Extract the auth from the app state
+            if let Some(ref jwt_auth) = state.jwt_auth {
+                crate::security::auth::login(State(jwt_auth.as_ref().clone()), Json(request)).await
+            } else {
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }));
     }
 
     // Apply middleware layers (order matters - security first)
+    let csrf_for_middleware = csrf_protection.clone();
     let app = app
         .with_state(state)
         // Add security components to request extensions for middleware access
@@ -381,7 +416,7 @@ pub async fn create_app(
             let ddos = ddos_protection.clone();
             let threat = threat_detection.clone();
             let incident = incident_response.clone();
-            let csrf = csrf_protection.clone();
+            let csrf = csrf_for_middleware.clone();
             
             request.extensions_mut().insert(ddos);
             request.extensions_mut().insert(threat);
@@ -429,7 +464,7 @@ fn create_cors_layer() -> CorsLayer {
     // Get allowed origins from environment (comma-separated)
     let allowed_origins = env::var("CORS_ALLOWED_ORIGINS")
         .or_else(|_| env::var("ALLOWED_ORIGINS"))
-        .unwrap_or_else(|_| "http://localhost:5173,http://localhost:3000".to_string())
+        .unwrap_or_else(|_| "http://localhost:5173,http://localhost:5174,http://localhost:3000".to_string())
         .split(',')
         .map(|s| s.trim().to_string())
         .collect::<Vec<String>>();
@@ -443,6 +478,7 @@ fn create_cors_layer() -> CorsLayer {
         CorsLayer::new()
             .allow_origin(AllowOrigin::list([
                 "http://localhost:5173".parse().unwrap(),
+                "http://localhost:5174".parse().unwrap(),
                 "http://localhost:3000".parse().unwrap(),
             ]))
     } else {
@@ -457,6 +493,7 @@ fn create_cors_layer() -> CorsLayer {
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list([
                     "http://localhost:5173".parse().unwrap(),
+                    "http://localhost:5174".parse().unwrap(),
                 ]))
         } else {
             info!("CORS configured with {} allowed origin(s)", origins.len());
@@ -514,7 +551,7 @@ fn create_cors_layer() -> CorsLayer {
     cors_builder
         .allow_methods(methods)
         .allow_headers(headers)
-        .allow_credentials(false) // Set to true if cookies/auth needed
+        .allow_credentials(true) // Set to true if cookies/auth needed
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 /// Compliance framework type
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ pub enum ComplianceFramework {
     SOC2,
     GDPR,
     HIPAA,
-    PCI_DSS,
+    PciDss,
     Custom(String),
 }
 

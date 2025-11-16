@@ -7,7 +7,6 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tracing::{info, warn};
 use chrono::Utc;
-use uuid::Uuid;
 
 /// API Key Manager for handling key validation and rotation
 pub struct ApiKeyManager {

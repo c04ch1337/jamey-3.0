@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::llm::cost_manager::{CostManager, CostStatistics};
-use crate::llm::health::{HealthMonitor, HealthStatus, HealthSummary};
+use crate::llm::health::{HealthMonitor, HealthSummary};
 use crate::llm::models::{
     ModelMetadata, ModelRegistry, TaskRequirements,
 };
@@ -44,6 +44,7 @@ struct Choice {
 struct Usage {
     prompt_tokens: usize,
     completion_tokens: usize,
+    #[allow(dead_code)]
     total_tokens: usize,
 }
 

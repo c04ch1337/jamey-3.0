@@ -68,6 +68,7 @@ pub struct PhoenixVault {
     backup_dir: PathBuf,
 
     /// Encryption key (32 bytes for AES-256)
+    #[allow(dead_code)]
     encryption_key: [u8; 32],
 
     /// Whether vault is enabled
@@ -84,7 +85,8 @@ impl PhoenixVault {
     /// Create a new Phoenix Vault
     pub fn new(
         backup_dir: PathBuf,
-        encryption_key: [u8; 32],
+        #[allow(dead_code)]
+    encryption_key: [u8; 32],
         enabled: bool,
         max_backups: usize,
     ) -> anyhow::Result<Self> {

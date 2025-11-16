@@ -2,15 +2,16 @@ use crate::config::Config;
 use crate::conscience::ConscienceEngine;
 use crate::llm::OpenRouterClient;
 use crate::memory::{MemoryLayer, MemorySystem};
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
-/// Interactive CLI chat interface for Jamey 3.0
+/// Interactive CLI chat interface for Jamey 3.0 with multi-line support
 pub struct ChatCLI {
     llm_client: Arc<OpenRouterClient>,
     conscience: Arc<ConscienceEngine>,
     memory: Arc<MemorySystem>,
     conversation_history: Vec<(String, String)>, // (role, content)
+    multiline_mode: bool,
 }
 
 impl ChatCLI {
@@ -27,24 +28,31 @@ impl ChatCLI {
             conscience,
             memory,
             conversation_history: Vec::new(),
+            multiline_mode: true, // Enable multi-line by default
         }
     }
 
-    /// Run the interactive chat loop
+    /// Run the interactive chat loop with multi-line support
     pub async fn run(&mut self) -> anyhow::Result<()> {
         println!("\n╔═══════════════════════════════════════════════════════════╗");
         println!("║     Jamey 3.0 - General & Guardian - CLI Chat            ║");
         println!("╚═══════════════════════════════════════════════════════════╝\n");
-        println!("Type your message and press Enter.");
-        println!("Commands: /help, /exit, /clear, /rules, /memory\n");
+        println!("💬 Multi-line chat mode enabled");
+        println!("   • Type your message (multiple lines supported)");
+        println!("   • Press Enter twice (empty line) to send");
+        println!("   • Or type '/send' on a new line to send immediately");
+        println!("   • Commands: /help, /exit, /clear, /rules, /memory, /multiline\n");
+
+        let stdin = io::stdin();
+        let mut stdin_lock = stdin.lock();
 
         loop {
-            print!("You: ");
-            io::stdout().flush()?;
-
-            let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
-            let input = input.trim().to_string();
+            // Read multi-line input
+            let input = if self.multiline_mode {
+                self.read_multiline_input(&mut stdin_lock)?
+            } else {
+                self.read_single_line_input(&mut stdin_lock)?
+            };
 
             if input.is_empty() {
                 continue;
@@ -78,6 +86,59 @@ impl ChatCLI {
         Ok(())
     }
 
+    /// Read multi-line input from user
+    fn read_multiline_input(&self, stdin: &mut io::StdinLock) -> anyhow::Result<String> {
+        let mut lines = Vec::new();
+        let mut line_count = 0;
+
+        print!("You: ");
+        io::stdout().flush()?;
+
+        loop {
+            let mut line = String::new();
+            stdin.read_line(&mut line)?;
+            
+            let trimmed = line.trim();
+            
+            // Check for /send command
+            if trimmed == "/send" {
+                break;
+            }
+            
+            // Empty line after content = send
+            if trimmed.is_empty() && !lines.is_empty() {
+                break;
+            }
+            
+            // Don't add empty lines at the start
+            if trimmed.is_empty() && lines.is_empty() {
+                continue;
+            }
+            
+            lines.push(line);
+            line_count += 1;
+            
+            // Show continuation prompt for multi-line
+            if line_count > 1 {
+                print!("  ... ");
+                io::stdout().flush()?;
+            }
+        }
+
+        Ok(lines.join("").trim().to_string())
+    }
+
+    /// Read single-line input (fallback mode)
+    fn read_single_line_input(&self, stdin: &mut io::StdinLock) -> anyhow::Result<String> {
+        print!("You: ");
+        io::stdout().flush()?;
+        
+        let mut input = String::new();
+        stdin.read_line(&mut input)?;
+        
+        Ok(input.trim().to_string())
+    }
+
     /// Handle CLI commands
     async fn handle_command(&mut self, cmd: &str) -> anyhow::Result<bool> {
         let parts: Vec<&str> = cmd.split_whitespace().collect();
@@ -92,6 +153,13 @@ impl ChatCLI {
                 println!("  /rules             - Show all moral rules");
                 println!("  /memory            - Show recent memories");
                 println!("  /conscience <text>  - Evaluate text with conscience engine");
+                println!("  /multiline          - Toggle multi-line mode (on/off)");
+                println!("  /send               - Send current multi-line message");
+                println!();
+                println!("💡 Multi-line Tips:");
+                println!("  • Type multiple lines, then press Enter twice to send");
+                println!("  • Or type '/send' on a new line to send immediately");
+                println!("  • Use /multiline to toggle single/multi-line mode");
                 println!();
             }
             "/exit" | "/quit" | "/q" => {
@@ -138,6 +206,15 @@ impl ChatCLI {
                     println!("  Text: {}", text);
                     println!("  Score: {:.2}\n", score);
                 }
+            }
+            "/multiline" => {
+                self.multiline_mode = !self.multiline_mode;
+                let mode = if self.multiline_mode { "enabled" } else { "disabled" };
+                println!("\n✅ Multi-line mode {}\n", mode);
+            }
+            "/send" => {
+                // This is handled in read_multiline_input, but included here for help
+                println!("\n💡 Type '/send' while composing a multi-line message to send it.\n");
             }
             _ => {
                 println!("\n⚠️  Unknown command: {}. Type /help for available commands.\n", command);

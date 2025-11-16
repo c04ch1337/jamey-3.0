@@ -6,10 +6,11 @@
 3. [Type Specifications](#type-specifications)
 4. [Validation Rules](#validation-rules)
 5. [Deployment Scenarios](#deployment-scenarios)
+6. [Monitoring Integration](#monitoring-integration)
 
 ## Overview
 
-This document provides detailed information about each configuration section in Jamey 3.0, including type specifications, validation rules, and deployment recommendations.
+This document provides detailed information about each configuration section in Jamey 3.0, including type specifications, validation rules, and deployment recommendations. The configuration system supports multiple environments and integrates with the monitoring system for configuration validation and health checks.
 
 ## Configuration Sections
 
@@ -27,15 +28,18 @@ OPENROUTER_API_URL=                # [Optional] API endpoint
   - Required in all environments
   - No default value
   - Must be kept secure
+  - Monitored for expiration and validity
 
 - `OPENROUTER_MODEL`: Specifies the LLM model to use
   - Default: `anthropic/claude-3.5-sonnet`
   - Available models: See OpenRouter documentation
   - Consider cost/performance tradeoffs
+  - Metrics tracked per model
 
 - `OPENROUTER_API_URL`: Custom API endpoint
   - Default: `https://openrouter.ai/api/v1`
   - Use for self-hosted or enterprise deployments
+  - Health checks performed automatically
 
 #### Database Configuration
 ```env
@@ -48,11 +52,13 @@ DATA_DIR=                         # [Optional] Data directory path
   - Default: `sqlite:data/jamey.db`
   - Format: `sqlite:path/to/database.db`
   - Relative or absolute paths supported
+  - Connection pool metrics tracked
 
 - `DATA_DIR`: Base directory for all data storage
   - Default: `./data`
   - Must be writable by application
   - Used by memory system and backups
+  - Storage metrics monitored
 
 ### 2. Security Configuration
 
@@ -67,6 +73,7 @@ API_KEY=                          # [Required in prod] API authentication key
 - Generate using: `openssl rand -hex 32`
 - Must be transmitted securely
 - Regular rotation recommended
+- Access attempts logged and monitored
 
 #### CORS Configuration
 ```env
@@ -79,6 +86,7 @@ ALLOWED_ORIGINS=                  # [Required in prod] Allowed origins
 - Production: Use specific domain list
 - Wildcards not recommended
 - Consider subdomains carefully
+- CORS violations tracked and alerted
 
 #### Rate Limiting
 ```env
@@ -91,11 +99,13 @@ RATE_LIMIT_BURST=                # [Optional] Burst size
   - Default: 50
   - Range: 1-1000
   - Adjust based on resources
+  - Rate limit metrics tracked
 
 - `RATE_LIMIT_BURST`: Maximum burst
   - Default: 100
   - Must be > RATE_LIMIT_RPS
   - Handles traffic spikes
+  - Burst events monitored
 
 ### 3. Soul System Configuration
 
@@ -110,11 +120,13 @@ SOUL_AUTO_RECORD=               # [Optional] Auto-record emotions
   - Default: true
   - Boolean value
   - Affects all soul features
+  - System state monitored
 
 - `SOUL_AUTO_RECORD`: Automatic emotion recording
   - Default: true
   - Boolean value
   - Performance impact: Low
+  - Recording metrics tracked
 
 #### Trust Parameters
 ```env
@@ -129,6 +141,7 @@ SOUL_EMPATHY_THRESHOLD=        # [Optional] Empathy threshold
 - Affects memory system behavior
 - Consider memory usage impact
 - Tune based on application needs
+- Parameter effectiveness monitored
 
 ### 4. MQTT Configuration
 
@@ -143,11 +156,13 @@ MQTT_PORT=                      # [Optional] Broker port
   - Default: `mqtt://localhost`
   - Supports TCP and SSL/TLS
   - Format: `mqtt://host` or `mqtts://host`
+  - Connection health monitored
 
 - `MQTT_PORT`: Broker port number
   - Default: 8883 (TLS)
   - Common ports: 1883 (TCP), 8883 (TLS)
   - Check firewall rules
+  - Port availability monitored
 
 #### TLS Configuration
 ```env
@@ -161,6 +176,7 @@ MQTT_TLS_CLIENT_KEY=           # [Optional] Client private key
 - Verify file permissions
 - Regular certificate rotation
 - Monitor expiration dates
+- Certificate health tracked
 
 ### 5. Phoenix Backup System
 
@@ -175,11 +191,13 @@ PHOENIX_BACKUP_DIR=            # [Optional] Backup location
   - Default: true
   - Boolean value
   - Consider storage impact
+  - Backup success monitored
 
 - `PHOENIX_BACKUP_DIR`: Backup storage
   - Default: `data/phoenix`
   - Must be writable
   - Monitor disk space
+  - Storage metrics tracked
 
 #### Encryption
 ```env
@@ -191,6 +209,7 @@ PHOENIX_ENCRYPTION_KEY=        # [Required if enabled] Encryption key
 - Generate using: `openssl rand -hex 32`
 - Store securely
 - Backup key separately
+- Encryption health monitored
 
 ## Type Specifications
 
@@ -279,3 +298,34 @@ PHOENIX_ENCRYPTION_KEY=<required>
 MQTT_TLS_CA_CERT=<required>
 MQTT_TLS_CLIENT_CERT=<required>
 MQTT_TLS_CLIENT_KEY=<required>
+```
+
+## Monitoring Integration
+
+### Configuration Health Checks
+- Certificate expiration monitoring
+- API key validation
+- Storage capacity tracking
+- Connection health verification
+- Rate limit effectiveness analysis
+
+### Metrics Collection
+- Configuration change tracking
+- Security event logging
+- Resource utilization monitoring
+- Performance impact analysis
+- Error rate tracking
+
+### Alerting Rules
+- Critical configuration changes
+- Security policy violations
+- Resource constraint warnings
+- Certificate expiration notices
+- Authentication failures
+
+### Dashboard Integration
+- Configuration status overview
+- Security metrics visualization
+- Resource utilization trends
+- Error rate analysis
+- Performance correlation

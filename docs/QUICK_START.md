@@ -17,29 +17,10 @@ cargo build
 ### 2. Basic Configuration
 ```bash
 # Copy environment template
-cp .env.example .env
+cp ENV_EXAMPLE.md .env
 
-# Generate API key
-openssl rand -hex 32 > api.key
-API_KEY=$(cat api.key)
-
-# Update .env with minimal configuration
-cat << EOF > .env
-# Core Configuration
-OPENROUTER_API_KEY=your-api-key-here
-DATABASE_URL=sqlite:data/jamey.db
-DATA_DIR=./data
-
-# Security Configuration
-API_KEY=$API_KEY
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-
-# Operational Settings
-PORT=3000
-HOST=0.0.0.0
-RUST_LOG=info
-DEV_MODE=true
-EOF
+# Edit .env and add your OpenRouter API key
+# OPENROUTER_API_KEY=your-api-key-here
 ```
 
 ### 3. Start the Service
@@ -48,33 +29,66 @@ EOF
 cargo run
 ```
 
+The backend will:
+- Start on `http://localhost:3000`
+- Initialize database automatically
+- Set up API endpoints
+- Connect to MQTT (if configured)
+
+**Expected output:**
+```
+Starting Jamey 3.0 - General & Guardian
+Server listening on http://0.0.0.0:3000
+```
+
 ### 4. Verify Installation
 ```bash
 # Check health endpoint
 curl http://localhost:3000/health
-
-# Test authenticated endpoint
-curl -H "Authorization: Bearer $API_KEY" \
-    http://localhost:3000/api/v1/status
 ```
+
+Should return:
+```json
+{
+  "status": "ok",
+  "service": "Jamey 3.0",
+  "version": "3.0.0"
+}
+```
+
+## Using the CLI
+
+### Interactive Chat
+```bash
+# Start CLI chat interface
+cargo run --bin jamey-cli chat
+```
+
+### Connect to Running Backend
+```bash
+# Connect to local backend
+cargo run --bin jamey-cli connect
+
+# Connect to remote backend
+cargo run --bin jamey-cli connect --url http://remote-server:3000
+```
+
+See [CLI Usage Guide](CLI_USAGE.md) for complete documentation.
 
 ## Common Configurations
 
 ### Development Environment
 ```env
 # Development settings
-DEV_MODE=true
-ENABLE_TEST_FEATURES=true
 RUST_LOG=debug
+SERVER_PORT=3000
 ```
 
 ### Production Environment
 ```env
 # Production settings
-DEV_MODE=false
-ENABLE_TEST_FEATURES=false
 RUST_LOG=info
-ALLOWED_ORIGINS=https://your-domain.com
+SERVER_PORT=3000
 ```
 
 ### Enable MQTT (Optional)
@@ -82,15 +96,13 @@ ALLOWED_ORIGINS=https://your-domain.com
 # MQTT Configuration
 MQTT_BROKER_URL=mqtt://localhost
 MQTT_PORT=8883
-MQTT_JWT_SECRET=$(openssl rand -hex 32)
 ```
 
 ### Enable Backups (Optional)
 ```env
 # Phoenix Backup System
-PHOENIX_ENABLED=true
-PHOENIX_BACKUP_DIR=data/phoenix
-PHOENIX_ENCRYPTION_KEY=$(openssl rand -hex 32)
+BACKUP_ENABLED=true
+BACKUP_DIR=data/backups
 ```
 
 ## Basic Operations
@@ -103,54 +115,46 @@ curl http://localhost:3000/health
 
 ### 2. Test API
 ```bash
-# Test with authentication
-curl -H "Authorization: Bearer $API_KEY" \
-    http://localhost:3000/api/v1/test
+# Evaluate an action
+curl -X POST http://localhost:3000/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{"action": "help someone in need"}'
 ```
 
-### 3. Monitor Logs
+### 3. View Rules
 ```bash
-# View logs
-tail -f /var/log/jamey/service.log
-```
-
-### 4. Manage Service
-```bash
-# Restart service
-systemctl restart jamey
-
-# Check status
-systemctl status jamey
+# Get all moral rules
+curl http://localhost:3000/rules
 ```
 
 ## Quick Troubleshooting
 
-### 1. Connection Issues
+### Backend Won't Start
+
+**Port 3000 already in use:**
+```bash
+# Linux/Mac
+lsof -ti:3000 | xargs kill -9
+
+# Windows PowerShell
+Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+**Database errors:**
+```bash
+# Delete and recreate database
+rm -rf data/jamey.db
+cargo run  # Will recreate database automatically
+```
+
+### Connection Issues
 ```bash
 # Check if service is running
-systemctl status jamey
+curl http://localhost:3000/health
 
 # Verify port is open
-netstat -tulpn | grep 3000
-```
-
-### 2. Authentication Problems
-```bash
-# Verify API key format
-echo $API_KEY | wc -c    # Should be 64
-
-# Test authentication
-curl -v -H "Authorization: Bearer $API_KEY" \
-    http://localhost:3000/api/v1/status
-```
-
-### 3. Database Issues
-```bash
-# Check database file
-ls -l data/jamey.db
-
-# Verify permissions
-sudo -u jamey-service test -w data/jamey.db && echo "Writable" || echo "Not writable"
+# Linux/Mac: netstat -tulpn | grep 3000
+# Windows: Get-NetTCPConnection -LocalPort 3000
 ```
 
 ## Next Steps

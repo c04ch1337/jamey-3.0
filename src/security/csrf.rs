@@ -5,7 +5,7 @@
 
 use axum::{
     extract::{Request, State},
-    http::{HeaderMap, HeaderName, StatusCode},
+    http::{HeaderMap, StatusCode},
     middleware::Next,
     response::Response,
 };
@@ -204,7 +204,7 @@ impl CsrfProtection {
 /// CSRF middleware - validates CSRF tokens for state-changing operations
 pub async fn csrf_middleware(
     State(csrf): State<Arc<CsrfProtection>>,
-    mut request: Request,
+    request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Skip CSRF check if disabled
@@ -216,7 +216,7 @@ pub async fn csrf_middleware(
     let method = request.method();
     let is_state_changing = matches!(
         method.as_str(),
-        "POST" | "PUT" | "PATCH" | "DELETE" | "PATCH"
+        "POST" | "PUT" | "PATCH" | "DELETE"
     );
 
     if !is_state_changing {

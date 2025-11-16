@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::{info, warn};
-use sqlx::SqlitePool;
 
 use super::vault::{PhoenixError, BackupManifest};
 

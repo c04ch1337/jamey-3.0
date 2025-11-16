@@ -106,8 +106,10 @@ struct IpRequestTracker {
 /// Blocked IP entry
 #[derive(Debug, Clone)]
 struct BlockedIp {
+    #[allow(dead_code)]
     blocked_at: Instant,
     unblock_at: Instant,
+    #[allow(dead_code)]
     reason: String,
 }
 

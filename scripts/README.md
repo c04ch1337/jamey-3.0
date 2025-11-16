@@ -4,7 +4,7 @@ Utility scripts for Jamey 3.0 development and operations.
 
 ## Available Scripts
 
-- **setup.sh** - Initial project setup (builds backend, installs frontend deps)
+- **setup.sh** - Initial project setup (builds backend)
 - **run.sh** - Start the backend server (kills existing process on port 3000)
 - **chat.sh** - Start the CLI chat interface
 - **test-conscience.sh** - Test the conscience engine via API

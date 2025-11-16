@@ -119,7 +119,6 @@ All badges use [Shields.io](https://shields.io/) format. Customize colors, text,
 
 ```markdown
 ![Deployment](https://img.shields.io/badge/deployment-ready-green.svg)
-![Docker](https://img.shields.io/badge/docker-supported-blue?logo=docker)
 ![Production](https://img.shields.io/badge/production-ready-green.svg)
 ![Staging](https://img.shields.io/badge/staging-available-yellow.svg)
 ```

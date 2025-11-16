@@ -1,11 +1,11 @@
 //! Automated backup scheduling
 
-use crate::backup::{BackupConfig, BackupManager};
+use crate::backup::BackupManager;
 use anyhow::Result;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tokio::time::{interval, sleep};
+use tokio::time::sleep;
 use tracing::{info, warn, error};
 
 /// Backup scheduler configuration

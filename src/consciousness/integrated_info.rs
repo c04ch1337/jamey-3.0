@@ -61,10 +61,9 @@
 //! - Observability: metrics are exported via the `metrics` crate with clear,
 //!   stable names.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use anyhow::{Result, anyhow};
 use metrics::{gauge, counter, histogram};
-use serde::{Serialize, Deserialize};
 use tracing::{warn, error, info};
 use std::collections::VecDeque;
 use std::ops::RangeInclusive;
@@ -79,6 +78,7 @@ use rayon::prelude::*;
 use super::global_workspace::WorkspaceContent;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct StabilityError {
     message: String,
     feature_index: usize,
@@ -162,6 +162,7 @@ struct ActivationBounds {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum RecoveryStrategy {
     Clamp,
     Reset,
@@ -318,7 +319,9 @@ const DEFAULT_CONNECTIVITY_WEIGHT: f64 = 0.7;
 const MIN_INTEGRATION_VALUE: f64 = 1e-12;
 
 /// Activation thresholds for multi-stage denominator protection
+#[allow(dead_code)]
 const ACTIVATION_THRESHOLD_LOW: f64 = 0.1;
+#[allow(dead_code)]
 const ACTIVATION_THRESHOLD_HIGH: f64 = 0.9;
 
 /// Calculator for Integrated Information.
@@ -676,14 +679,16 @@ impl PhiCalculator {
 
         // Then validate for stability, again treating errors as recoverable by
         // clamping/repairing individual feature values.
-        let final_features = if let Some(stability_check) = &mut self.stability_check {
+        let final_features = if let Some(ref mut stability_check) = self.stability_check {
             let mut stable_features = Vec::with_capacity(validated_features.len());
             for (idx, &value) in validated_features.iter().enumerate() {
                 match stability_check.validate_feature(&validated_features, idx) {
                     Ok(validated) => stable_features.push(validated),
                     Err(e) => {
                         error!("Feature stability error: {}", e);
-                        stable_features.push(self.recover_unstable_feature(value, idx));
+                        // Use static recovery function to avoid borrow issues
+                        let recovered = Self::recover_unstable_feature_static(value, idx);
+                        stable_features.push(recovered);
                     }
                 }
             }
@@ -706,9 +711,16 @@ impl PhiCalculator {
     }
 
     /// Recover from unstable feature values
-    fn recover_unstable_feature(&self, value: f64, feature_index: usize) -> f64 {
+    #[allow(dead_code)]
+    fn recover_unstable_feature(&self, value: f64, _feature_index: usize) -> f64 {
         // Simple recovery strategy: clamp to valid range
         value.clamp(0.0, 1.0)
+    }
+
+    /// Static helper function to recover unstable features
+    fn recover_unstable_feature_static(value: f64, _feature_index: usize) -> f64 {
+        // Clamp to valid range [0.0, 1.0]
+        value.max(0.0).min(1.0)
     }
 
     /// Weight matrices for each node's feature combination
@@ -789,7 +801,7 @@ impl PhiCalculator {
     }
 
     /// Apply multi-stage denominator protection
-    fn apply_denominator_protection(&self, raw_integration: f64, max_integration: f64, epsilon: f64) -> f64 {
+    fn apply_denominator_protection(&self, _raw_integration: f64, max_integration: f64, epsilon: f64) -> f64 {
         if max_integration <= epsilon {
             MIN_INTEGRATION_VALUE
         } else if max_integration <= epsilon * 10.0 {
@@ -806,7 +818,7 @@ impl PhiCalculator {
     ///   (`raw_integration * var_norm`), and
     /// - `phi` is the normalized Φ ∈ [0, 1].
     // Helper methods for parallel feature extraction
-    fn extract_length_feature(&self, content: &str, len: f64) -> f64 {
+    fn extract_length_feature(&self, _content: &str, len: f64) -> f64 {
         if len <= 0.0 {
             0.0
         } else {

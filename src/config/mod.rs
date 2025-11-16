@@ -404,6 +404,114 @@ impl ConsciousnessConfig {
     }
 }
 
+/// Cache configuration settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheConfig {
+    /// Maximum size of the cache in megabytes
+    pub max_size_mb: u32,
+    /// Time-to-live for cached items in seconds
+    pub ttl_secs: u64,
+    /// Enable cache compression
+    pub enable_compression: bool,
+    /// Minimum compression ratio to store compressed
+    pub min_compression_ratio: f32,
+    /// Maximum number of cached items
+    pub max_items: usize,
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            max_size_mb: 100,
+            ttl_secs: 3600,
+            enable_compression: true,
+            min_compression_ratio: 0.8,
+            max_items: 10000,
+        }
+    }
+}
+
+/// Monitoring configuration settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitoringConfig {
+    /// Enable performance metrics collection
+    pub enable_metrics: bool,
+    /// Metrics collection interval in seconds
+    pub metrics_interval_secs: u64,
+    /// Maximum number of metrics to store
+    pub max_metrics_count: usize,
+    /// Performance warning threshold (0.0 to 1.0)
+    pub perf_warning_threshold: f32,
+    /// Performance critical threshold (0.0 to 1.0)
+    pub perf_critical_threshold: f32,
+}
+
+impl Default for MonitoringConfig {
+    fn default() -> Self {
+        Self {
+            enable_metrics: true,
+            metrics_interval_secs: 60,
+            max_metrics_count: 1000,
+            perf_warning_threshold: 0.8,
+            perf_critical_threshold: 0.95,
+        }
+    }
+}
+
+/// Async communication configuration settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AsyncConfig {
+    /// Maximum number of concurrent tasks
+    pub max_concurrent_tasks: usize,
+    /// Task queue capacity
+    pub queue_capacity: usize,
+    /// Task timeout in seconds
+    pub task_timeout_secs: u64,
+    /// Enable backpressure mechanisms
+    pub enable_backpressure: bool,
+    /// Maximum retry attempts for failed tasks
+    pub max_retries: u32,
+}
+
+impl Default for AsyncConfig {
+    fn default() -> Self {
+        Self {
+            max_concurrent_tasks: 100,
+            queue_capacity: 1000,
+            task_timeout_secs: 30,
+            enable_backpressure: true,
+            max_retries: 3,
+        }
+    }
+}
+
+/// Context management configuration settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextConfig {
+    /// Maximum context size in bytes
+    pub max_context_size: usize,
+    /// Context retention period in seconds
+    pub retention_secs: u64,
+    /// Enable context compression
+    pub enable_compression: bool,
+    /// Maximum number of active contexts
+    pub max_active_contexts: usize,
+    /// Context priority levels (1-5)
+    pub priority_levels: u8,
+}
+
+impl Default for ContextConfig {
+    fn default() -> Self {
+        Self {
+            max_context_size: 1024 * 1024, // 1MB
+            retention_secs: 3600,
+            enable_compression: true,
+            max_active_contexts: 100,
+            priority_levels: 5,
+        }
+    }
+}
+
 /// Application configuration loaded from environment variables
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -526,7 +634,7 @@ impl Config {
                 enabled: true,
                 backup_dir,
                 encryption_key,
-                auto_backup_hours,
+                auto_backup_hours: Some(auto_backup_hours),
                 max_backups,
             })
         } else {

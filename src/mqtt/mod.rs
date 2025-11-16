@@ -38,6 +38,7 @@ mod auth;
 mod client;
 mod config;
 mod messages;
+pub mod handlers;
 
 // Re-export public API
 pub use auth::{AuthError, JwtManager, MqttClaims};

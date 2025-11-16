@@ -4,7 +4,7 @@
 
 use axum::{
     extract::{Request, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     middleware::Next,
     response::Response,
 };

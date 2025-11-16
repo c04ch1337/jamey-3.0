@@ -2,7 +2,7 @@ use anyhow::Result;
 use jamey_3::api::create_app;
 use jamey_3::config::Config;
 use jamey_3::db::init_db;
-use jamey_3::mqtt::{MqttClient, MqttConfig, handlers};
+use jamey_3::mqtt::{MqttClient, handlers};
 use jamey_3::conscience::ConscienceEngine;
 use jamey_3::memory::MemorySystem;
 use jamey_3::phoenix::{PhoenixVault, BackupScheduler};
@@ -11,7 +11,8 @@ use std::sync::Arc;
 use tokio::signal;
 use tokio::sync::broadcast;
 use tracing::{info, warn, error};
-use tracing_subscriber::fmt::time::UtcTime;
+// UtcTime requires the "time" feature which is not enabled
+// Using system time instead
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -21,7 +22,6 @@ async fn main() -> Result<()> {
         // Fallback to JSON-formatted tracing
         tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .with_timer(UtcTime::rfc_3339())
             .json()
             .with_current_span(true)
             .with_span_list(true)
@@ -65,15 +65,10 @@ async fn main() -> Result<()> {
     info!("Database initialized");
 
     // Initialize Soul system if enabled (needed before wiring to components)
-    let soul = if let Some(cfg) = config.as_ref().and_then(|c| c.soul.as_ref()) {
-        if cfg.enabled {
-            info!("Initializing Soul system...");
-            let storage = SoulStorage::new(pool.clone(), cfg.clone());
-            Some(Arc::new(storage))
-        } else {
-            info!("Soul system disabled");
-            None
-        }
+    let soul = if let Some(_cfg) = config.as_ref().map(|c| &c.soul) {
+        info!("Initializing Soul system...");
+        let storage = SoulStorage::new(pool.clone());
+        Some(Arc::new(storage))
     } else {
         info!("Soul system configuration not found");
         None
@@ -82,7 +77,7 @@ async fn main() -> Result<()> {
     // Initialize core components with Soul integration
     let conscience_engine = ConscienceEngine::new();
     let conscience = if let Some(ref soul_storage) = soul {
-        Arc::new(conscience_engine.with_soul_storage(soul_storage.clone()))
+        Arc::new(conscience_engine.with_soul_storage(Arc::clone(soul_storage)))
     } else {
         Arc::new(conscience_engine)
     };
@@ -95,7 +90,7 @@ async fn main() -> Result<()> {
             .into()
     ).await?;
     let memory = if let Some(ref soul_storage) = soul {
-        Arc::new(memory_system.with_soul_storage(soul_storage.clone()))
+        Arc::new(memory_system.with_soul_storage(Arc::clone(soul_storage)))
     } else {
         Arc::new(memory_system)
     };
@@ -103,16 +98,22 @@ async fn main() -> Result<()> {
     // Initialize Phoenix Vault if enabled
     let phoenix_vault = if let Some(cfg) = config.as_ref().and_then(|c| c.phoenix.as_ref()) {
         if cfg.enabled {
+            // Convert encryption key string to [u8; 32]
+            let mut key = [0u8; 32];
+            let key_bytes = cfg.encryption_key.as_bytes();
+            let len = key_bytes.len().min(32);
+            key[..len].copy_from_slice(&key_bytes[..len]);
+            
             let vault = Arc::new(PhoenixVault::new(
-                cfg.backup_dir.clone(),
-                cfg.encryption_key.clone()?,
+                cfg.backup_dir.clone().into(),
+                key,
                 true,
-                cfg.max_backups,
+                cfg.max_backups.try_into().unwrap(),
             )?);
 
             // Start backup scheduler if interval configured
             if let Some(hours) = cfg.auto_backup_hours {
-                let scheduler = BackupScheduler::new(vault.clone(), hours);
+                let scheduler = BackupScheduler::new(vault.clone(), hours.into());
                 tokio::spawn(async move {
                     scheduler.start().await;
                 });
@@ -146,7 +147,7 @@ async fn main() -> Result<()> {
 
     // Create shutdown channel
     let (shutdown_tx, _) = broadcast::channel(1);
-    let shutdown_rx = shutdown_tx.subscribe();
+    let mut shutdown_rx = shutdown_tx.subscribe();
 
     // Create and run the Axum app
     let app = create_app(
@@ -186,7 +187,9 @@ async fn main() -> Result<()> {
         _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
             warn!("Shutdown timeout reached");
         }
-        _ = shutdown_rx => {
+        _ = async {
+            shutdown_rx.recv()
+        } => {
             info!("All requests completed");
         }
     }
@@ -225,35 +228,41 @@ async fn setup_mqtt_subscriptions(
         ConscienceEvaluationRequest, MemoryStoreRequest, QoS,
     };
 
+    let mqtt_clone = Arc::clone(mqtt);
+    let conscience_clone = Arc::clone(&conscience);
+    
     // Subscribe to conscience evaluation requests
     mqtt.subscribe_typed::<ConscienceEvaluationRequest, _>(
         "jamey/conscience/evaluate",
         QoS::AtLeastOnce,
         move |msg| {
-            let mqtt = mqtt.clone();
-            let conscience = conscience.clone();
+            let mqtt = Arc::clone(&mqtt_clone);
+            let conscience = Arc::clone(&conscience_clone);
             tokio::spawn(async move {
                 handlers::handle_conscience_evaluation(
                     mqtt,
                     conscience,
-                    msg,
+                    msg.payload,
                 ).await;
             });
         },
     ).await?;
 
+    let mqtt_clone2 = Arc::clone(mqtt);
+    let memory_clone = Arc::clone(&memory);
+    
     // Subscribe to memory store requests
     mqtt.subscribe_typed::<MemoryStoreRequest, _>(
         "jamey/memory/store",
         QoS::AtLeastOnce,
         move |msg| {
-            let mqtt = mqtt.clone();
-            let memory = memory.clone();
+            let mqtt = Arc::clone(&mqtt_clone2);
+            let memory = Arc::clone(&memory_clone);
             tokio::spawn(async move {
                 handlers::handle_memory_store(
                     mqtt,
                     memory,
-                    msg,
+                    msg.payload,
                 ).await;
             });
         },

@@ -1,0 +1,155 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Run nightly tests
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUST_LOG: info
+
+jobs:
+  fast-tests:
+    name: Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run unit tests
+        run: cargo test --lib -- --nocapture
+        
+      - name: Run critical path tests
+        run: |
+          cargo test --test integration test_cache_memory_integration -- --nocapture
+          cargo test --test integration test_async_communication_integration -- --nocapture
+
+  full-suite:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run all tests
+        run: |
+          cargo test --all -- --nocapture
+          
+      - name: Run benchmarks
+        run: cargo bench
+        
+      - name: Store benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: target/criterion
+
+  extended-tests:
+    name: Extended Test Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Run stress tests
+        run: cargo test --test stress -- --nocapture
+        env:
+          STRESS_DURATION: 3600  # 1 hour stress test
+          
+      - name: Run extended load tests
+        run: cargo test --test load -- --nocapture
+        env:
+          LOAD_TEST_DURATION: 1800  # 30 minute load test
+          
+      - name: Run performance regression tests
+        run: |
+          cargo bench
+          python scripts/analyze_benchmarks.py
+          
+      - name: Store test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: extended-test-results
+          path: |
+            target/criterion
+            test-results/
+
+  report-results:
+    name: Report Test Results
+    needs: [fast-tests, full-suite, extended-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        
+      - name: Generate test report
+        run: python scripts/generate_test_report.py
+        
+      - name: Post results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+            
+      - name: Update metrics dashboard
+        run: python scripts/update_metrics.py
+        env:
+          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}

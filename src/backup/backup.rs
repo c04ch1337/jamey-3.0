@@ -44,6 +44,7 @@ pub struct BackupResult {
 /// Manages backup operations
 pub struct BackupManager {
     config: BackupConfig,
+    #[allow(dead_code)]
     data_dir: PathBuf,
     memory_dir: PathBuf,
 }

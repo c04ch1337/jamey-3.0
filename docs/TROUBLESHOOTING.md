@@ -1,348 +1,286 @@
-# Configuration Troubleshooting Guide
+# Troubleshooting Guide
+
+This guide provides solutions for common issues you might encounter while running Jamey 3.0, organized by system component.
 
 ## Table of Contents
-1. [Common Issues](#common-issues)
-2. [Diagnostic Tools](#diagnostic-tools)
-3. [Configuration Validation](#configuration-validation)
-4. [Environment-Specific Issues](#environment-specific-issues)
-5. [Recovery Procedures](#recovery-procedures)
+1. [General System Issues](#general-system-issues)
+2. [Configuration Problems](#configuration-problems)
+3. [Memory System Issues](#memory-system-issues)
+4. [Cache System Problems](#cache-system-problems)
+5. [Communication Issues](#communication-issues)
+6. [Monitoring Alerts](#monitoring-alerts)
+7. [Performance Problems](#performance-problems)
 
-## Common Issues
+## General System Issues
 
-### API Authentication Issues
+### System Won't Start
 
-1. **Invalid API Key**
-```
-Error: Authentication failed: Invalid API key
-```
-
-**Solution:**
-1. Verify API key length:
+1. **Check Configuration**
 ```bash
-# Should be 64 characters (32 bytes hex)
-echo $API_KEY | wc -c
+# Verify environment file exists
+ls -l .env
+
+# Validate required variables
+grep -E "OPENROUTER_API_KEY|API_KEY" .env
 ```
 
-2. Check key format:
+2. **Database Issues**
 ```bash
-# Should be hexadecimal
-if [[ $API_KEY =~ ^[0-9a-f]{64}$ ]]; then
-    echo "Valid format"
-else
-    echo "Invalid format"
-fi
+# Check database file permissions
+ls -l data/jamey.db
+
+# Verify SQLite integrity
+sqlite3 data/jamey.db "PRAGMA integrity_check;"
 ```
 
-3. Regenerate if needed:
+3. **Port Conflicts**
 ```bash
-openssl rand -hex 32 > api.key
+# Check if port is already in use
+netstat -tuln | grep 3000
 ```
 
-### Database Connection Errors
+### Common Error Messages
 
-1. **SQLite Path Issues**
-```
-Error: Unable to open database file
-```
+| Error | Possible Cause | Solution |
+|-------|---------------|----------|
+| "Failed to initialize metrics" | Port 9090 in use | Change metrics port or stop conflicting service |
+| "Database connection failed" | SQLite file permissions | Check file and directory permissions |
+| "API key not configured" | Missing environment variable | Set OPENROUTER_API_KEY in .env |
 
-**Solution:**
-1. Check directory permissions:
-```bash
-ls -la data/
-ls -la data/jamey.db
-```
-
-2. Verify path in configuration:
-```bash
-# Should match DATABASE_URL in .env
-sqlite3 "$(grep DATABASE_URL .env | cut -d= -f2)" ".tables"
-```
-
-3. Create directory if missing:
-```bash
-mkdir -p data
-chmod 750 data
-```
-
-### MQTT Connection Problems
-
-1. **TLS Certificate Issues**
-```
-Error: SSL/TLS handshake failed
-```
-
-**Solution:**
-1. Verify certificate paths:
-```bash
-# Check certificate files
-ls -l /etc/jamey/certs/
-```
-
-2. Validate certificate chain:
-```bash
-openssl verify -CAfile /etc/jamey/certs/ca.crt \
-    /etc/jamey/certs/client.crt
-```
-
-3. Check certificate expiration:
-```bash
-openssl x509 -in /etc/jamey/certs/client.crt -noout -dates
-```
-
-### Phoenix Backup Errors
-
-1. **Encryption Key Issues**
-```
-Error: Invalid encryption key format
-```
-
-**Solution:**
-1. Verify key format:
-```bash
-# Should be 64 hex characters
-echo $PHOENIX_ENCRYPTION_KEY | wc -c
-```
-
-2. Check backup directory permissions:
-```bash
-ls -la $PHOENIX_BACKUP_DIR
-```
-
-3. Test backup creation:
-```bash
-./scripts/test-backup.sh
-```
-
-## Diagnostic Tools
-
-### Configuration Validator
-
-```bash
-# Run full validation
-./scripts/validate-config.sh
-
-# Check specific section
-./scripts/validate-config.sh --section security
-```
-
-### Log Analysis
-
-1. **View Recent Errors**
-```bash
-# Last 50 error messages
-grep -i error /var/log/jamey/service.log | tail -n 50
-
-# Configuration-related errors
-grep -i "config" /var/log/jamey/service.log | grep -i error
-```
-
-2. **Monitor Real-time Logs**
-```bash
-# Follow log output
-tail -f /var/log/jamey/service.log | grep --line-buffered "config"
-```
-
-### Network Diagnostics
-
-1. **MQTT Connectivity**
-```bash
-# Test MQTT connection
-mosquitto_sub -h localhost -p 8883 \
-    --cafile /etc/jamey/certs/ca.crt \
-    --cert /etc/jamey/certs/client.crt \
-    --key /etc/jamey/certs/client.key \
-    -t "jamey/test" -v
-```
-
-2. **API Endpoint Test**
-```bash
-# Test API health
-curl -v http://localhost:3000/health
-
-# Test authenticated endpoint
-curl -v -H "Authorization: Bearer $API_KEY" \
-    http://localhost:3000/api/v1/status
-```
-
-## Configuration Validation
+## Configuration Problems
 
 ### Environment Variables
 
-1. **Required Variables**
+1. **Missing Variables**
 ```bash
-# Check required variables
-./scripts/check-env.sh
-
-# Validate formats
-./scripts/validate-env.sh
+# Check for required variables
+source .env
+echo $OPENROUTER_API_KEY
+echo $API_KEY
 ```
 
-2. **Value Constraints**
+2. **Invalid Values**
 ```bash
-# Check numeric ranges
-./scripts/validate-ranges.sh
-
-# Verify string lengths
-./scripts/validate-lengths.sh
+# Validate key lengths
+[ ${#API_KEY} -ge 32 ] && echo "API key OK" || echo "API key too short"
 ```
 
-### File System Checks
+### File Permissions
 
-1. **Directory Structure**
 ```bash
-# Verify required directories
-./scripts/check-dirs.sh
+# Fix data directory permissions
+chmod 755 data/
+chmod 644 data/jamey.db
 
-# Check permissions
-./scripts/verify-permissions.sh
+# Fix TLS certificate permissions
+chmod 644 certs/*.crt
+chmod 600 certs/*.key
 ```
 
-2. **File Access**
+## Memory System Issues
+
+### Storage Problems
+
+1. **Index Corruption**
 ```bash
-# Test file access
-sudo -u jamey-service test -r /etc/jamey/config/app.conf && echo "Readable" || echo "Not readable"
+# Check index size and permissions
+ls -lh data/*/index
+
+# Rebuild index if necessary
+rm -rf data/*/index/*
+systemctl restart jamey
 ```
 
-## Environment-Specific Issues
-
-### Development Environment
-
-1. **CORS Issues**
-```
-Error: CORS policy violation
-```
-
-**Solution:**
-```env
-# Development CORS settings
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-```
-
-2. **Hot Reload Problems**
-```
-Error: Unable to watch files
-```
-
-**Solution:**
+2. **Out of Space**
 ```bash
-# Increase inotify limits
-echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+# Check disk usage
+df -h data/
+
+# Clean old indices
+find data/ -name "*.idx" -mtime +30 -delete
 ```
 
-### Production Environment
+### Common Memory Errors
 
-1. **Permission Denied**
-```
-Error: Permission denied writing to /var/lib/jamey
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Index not found" | Missing or corrupt index | Rebuild affected index |
+| "Memory limit exceeded" | Too many records | Increase limits or prune old data |
+| "Failed to store record" | Disk space or permissions | Check space and permissions |
+
+## Cache System Problems
+
+### Cache Performance Issues
+
+1. **High Miss Rate**
+```rust
+// Check cache configuration
+let config = CacheConfig {
+    max_capacity: 20_000,  // Increase if miss rate is high
+    time_to_live: Duration::from_secs(7200),
+    time_to_idle: Duration::from_secs(3600),
+};
 ```
 
-**Solution:**
+2. **Memory Usage**
 ```bash
-# Fix ownership
-sudo chown -R jamey-service:jamey-service /var/lib/jamey
-
-# Set correct permissions
-sudo chmod 750 /var/lib/jamey
+# Monitor cache memory usage
+watch -n1 'ps -o pid,rss,command -p $(pgrep jamey)'
 ```
 
-2. **Resource Limits**
-```
-Error: Too many open files
-```
+### Cache Errors
 
-**Solution:**
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Cache overflow" | Exceeded capacity | Increase max_capacity or reduce TTL |
+| "Invalid cache key" | Malformed key | Check key generation logic |
+| "Cache write failed" | Memory pressure | Monitor system resources |
+
+## Communication Issues
+
+### MQTT Problems
+
+1. **Connection Failures**
 ```bash
-# Update systemd service limits
-sudo systemctl edit jamey.service
+# Check MQTT broker status
+systemctl status mosquitto
 
-# Add:
-[Service]
-LimitNOFILE=65535
+# Verify TLS certificates
+openssl verify -CAfile certs/ta-ca.crt certs/client.crt
 ```
 
-## Recovery Procedures
-
-### Configuration Recovery
-
-1. **Backup Current State**
+2. **Authentication Issues**
 ```bash
-# Backup configuration
-cp .env .env.backup-$(date +%Y%m%d)
-
-# Export current secrets
-./scripts/export-secrets.sh
+# Check JWT token generation
+curl -X POST http://localhost:3000/api/mqtt/token
 ```
 
-2. **Restore from Backup**
-```bash
-# Restore configuration
-cp .env.backup-20251115 .env
+### Network Issues
 
-# Verify restoration
-diff .env.backup-20251115 .env
+```bash
+# Check network connectivity
+ping openrouter.ai
+
+# Verify DNS resolution
+nslookup api.openrouter.ai
+
+# Test TLS connection
+openssl s_client -connect api.openrouter.ai:443
 ```
 
-### Emergency Recovery
+## Monitoring Alerts
 
-1. **Safe Mode Start**
+### Critical Alerts
+
+1. **ConsciousnessPhiCritical**
 ```bash
-# Start in safe mode
-SAFE_MODE=1 systemctl start jamey
+# Check recent consciousness metrics
+curl -s localhost:9090/api/v1/query?query=consciousness_phi_value
 
-# Check status
-systemctl status jamey
+# Review consciousness logs
+journalctl -u jamey -n 100 | grep consciousness
 ```
 
-2. **Configuration Reset**
+2. **SystemUnavailable**
 ```bash
-# Reset to defaults
-cp .env.example .env
-
-# Generate new secrets
-./scripts/generate-secrets.sh
-```
-
-### Verification Steps
-
-1. **System Health**
-```bash
-# Check service status
+# Check system status
 systemctl status jamey
 
-# Verify logs
-journalctl -u jamey --since "5 minutes ago"
+# View recent errors
+journalctl -u jamey -p err
 ```
 
-2. **Configuration Test**
+### Performance Alerts
+
+1. **HighMemoryUsage**
 ```bash
-# Test configuration
-./scripts/test-config.sh
+# Check memory usage
+free -h
 
-# Verify core functionality
-./scripts/verify-core.sh
+# Find memory-intensive operations
+ps aux --sort=-%mem | head
 ```
 
-## Support Resources
-
-### Getting Help
-
-1. **Log Collection**
+2. **HighCPUUsage**
 ```bash
-# Collect logs
-./scripts/collect-logs.sh
+# Monitor CPU usage
+top -b -n 1
 
-# Generate support bundle
-./scripts/create-support-bundle.sh
+# Check for resource-intensive processes
+pidstat -u 1 10
 ```
 
-2. **Issue Reporting**
-- Include configuration (sanitized)
-- Attach relevant logs
-- Describe steps to reproduce
-- Include environment details
+## Performance Problems
 
-### Documentation
-- Configuration Guide: [CONFIGURATION.md](./CONFIGURATION.md)
-- Security Guide: [SECURITY_BEST_PRACTICES.md](./SECURITY_BEST_PRACTICES.md)
-- Migration Guide: [CONFIGURATION_MIGRATION.md](./CONFIGURATION_MIGRATION.md)
+### High Latency
+
+1. **Identify Bottlenecks**
+```bash
+# Monitor request latencies
+curl -s localhost:9090/api/v1/query?query=http_request_duration_seconds
+
+# Check database performance
+sqlite3 data/jamey.db "PRAGMA wal_checkpoint;"
+```
+
+2. **Resource Constraints**
+```bash
+# Monitor system resources
+vmstat 1 10
+
+# Check I/O wait
+iostat -x 1 10
+```
+
+### Memory Leaks
+
+```bash
+# Monitor memory growth
+watch -n10 'ps -o pid,rss,vsz $(pgrep jamey)'
+
+# Check for file descriptor leaks
+lsof -p $(pgrep jamey) | wc -l
+```
+
+## Best Practices
+
+1. **Regular Maintenance**
+   - Monitor log files
+   - Check disk usage
+   - Verify backup integrity
+   - Review performance metrics
+
+2. **Preventive Measures**
+   - Set up monitoring alerts
+   - Configure log rotation
+   - Implement resource limits
+   - Regular security updates
+
+3. **Debugging Steps**
+   - Check logs first
+   - Verify configuration
+   - Test connectivity
+   - Monitor resources
+   - Review metrics
+
+4. **Recovery Procedures**
+   - Backup before changes
+   - Document all actions
+   - Test after fixes
+   - Monitor for recurrence
+
+## Getting Help
+
+1. **Gathering Information**
+   - System logs
+   - Error messages
+   - Configuration files
+   - Metrics data
+   - Recent changes
+
+2. **Reporting Issues**
+   - Include error details
+   - Provide configuration
+   - Share relevant logs
+   - Describe steps to reproduce
+   - List attempted solutions

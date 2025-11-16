@@ -302,7 +302,7 @@ impl IncidentResponse {
         
         let incident = SecurityIncident {
             id: incident_id.clone(),
-            incident_type,
+            incident_type: incident_type.clone(),
             severity,
             status: IncidentStatus::Detected,
             ip,
@@ -314,16 +314,14 @@ impl IncidentResponse {
             notes: Vec::new(),
         };
         
-        // Store incident (extract values before moving)
-        let incident_type_clone = incident_type.clone();
-        let severity_clone = severity;
+        // Store incident
         {
             let mut incidents = self.incidents.lock().unwrap();
             incidents.insert(incident_id.clone(), incident);
         }
         
-        error!("Security incident created: {} - {:?} - {:?}", 
-               incident_id, incident_type_clone, severity_clone);
+        error!("Security incident created: {} - {:?} - {:?}",
+               incident_id, incident_type, severity);
         
         incident_id
     }

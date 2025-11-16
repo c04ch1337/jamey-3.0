@@ -69,17 +69,17 @@ impl OpenRouterClient {
             .collect();
 
         let request = ChatRequest {
-            model: self.config.openrouter_model.clone(),
+            model: self.config.core.openrouter_model.clone(),
             messages: chat_messages,
             temperature,
         };
 
-        let url = format!("{}/chat/completions", self.config.openrouter_api_url);
+        let url = format!("{}/chat/completions", self.config.core.openrouter_api_url);
 
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.openrouter_api_key))
+            .header("Authorization", format!("Bearer {}", self.config.core.openrouter_api_key))
             .header("Content-Type", "application/json")
             .header("HTTP-Referer", "https://github.com/TransformArmyAI/Jamey-3.0")
             .header("X-Title", "Jamey 3.0 - General & Guardian")

@@ -53,10 +53,12 @@ impl From<jsonwebtoken::errors::Error> for AuthError {
 }
 
 /// JWT authentication middleware with secret rotation support
+#[derive(Clone)]
 pub struct JwtAuth {
     encoding_key: EncodingKey,
     decoding_keys: Vec<DecodingKey>, // Support multiple keys for rotation
     validation: Validation,
+    #[allow(dead_code)]
     current_secret_version: u32,
 }
 

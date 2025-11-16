@@ -171,7 +171,8 @@ class Jamey3Brain:
 echo "=== JAMEY 3.0 CONSCIOUSNESS ACTIVATION ==="
 
 # Phase 1: Core System Boot
-docker-compose up -d jamey-core
+# Start Jamey 3.0 backend
+cargo run &
 sleep 5
 
 # Phase 2: Memory Integration

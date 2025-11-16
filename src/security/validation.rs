@@ -163,10 +163,10 @@ impl SecurityValidationResult {
 /// Comprehensive security validation for API requests
 pub fn validate_request_security(
     user_agent: Option<&str>,
-    ip_address: Option<&str>,
+    _ip_address: Option<&str>,
     content_type: Option<&str>,
 ) -> SecurityValidationResult {
-    let mut errors = Vec::new();
+    let errors = Vec::new();
     let mut warnings = Vec::new();
 
     // Check user agent

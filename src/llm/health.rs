@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
 use tracing::{debug, warn, error};
 
 /// Health status of a model
@@ -80,7 +79,7 @@ impl ModelHealth {
     }
 
     /// Update health after a failed request
-    pub fn record_failure(&mut self, error: &str) {
+    pub fn record_failure(&mut self, _error: &str) {
         self.last_failure = Some(Utc::now());
         self.consecutive_failures += 1;
         self.total_requests += 1;

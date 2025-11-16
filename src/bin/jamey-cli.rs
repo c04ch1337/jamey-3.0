@@ -153,7 +153,6 @@ async fn run_chat() -> Result<()> {
     Ok(())
 }
 
-<<<<<<< HEAD
 async fn run_connect(backend_url: &str, api_key: Option<&str>) -> Result<()> {
     use std::io::{self, Write};
     
@@ -185,16 +184,18 @@ async fn run_connect(backend_url: &str, api_key: Option<&str>) -> Result<()> {
     println!("\n╔═══════════════════════════════════════════════════════════╗");
     println!("║     Jamey 3.0 - Connected Mode - CLI Chat                ║");
     println!("╚═══════════════════════════════════════════════════════════╝\n");
-    println!("Type your message and press Enter.");
-    println!("Commands: /help, /exit, /clear, /rules\n");
+    println!("💬 Multi-line chat mode enabled");
+    println!("   • Type your message (multiple lines supported)");
+    println!("   • Press Enter twice (empty line) to send");
+    println!("   • Or type '/send' on a new line to send immediately");
+    println!("   • Commands: /help, /exit, /clear, /rules\n");
+    
+    let stdin = io::stdin();
+    let mut stdin_lock = stdin.lock();
     
     loop {
-        print!("You: ");
-        io::stdout().flush()?;
-        
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let input = input.trim().to_string();
+        // Read multi-line input
+        let input = read_multiline_input(&mut stdin_lock)?;
         
         if input.is_empty() {
             continue;
@@ -252,6 +253,50 @@ async fn run_connect(backend_url: &str, api_key: Option<&str>) -> Result<()> {
     
     println!("\n👋 Disconnected from backend. Goodbye!\n");
     Ok(())
+}
+
+/// Read multi-line input from user (for connect mode)
+fn read_multiline_input(stdin: &mut std::io::StdinLock) -> anyhow::Result<String> {
+    use std::io::BufRead;
+    
+    let mut lines = Vec::new();
+    let mut line_count = 0;
+
+    print!("You: ");
+    std::io::stdout().flush()?;
+
+    loop {
+        let mut line = String::new();
+        stdin.read_line(&mut line)?;
+        
+        let trimmed = line.trim();
+        
+        // Check for /send command
+        if trimmed == "/send" {
+            break;
+        }
+        
+        // Empty line after content = send
+        if trimmed.is_empty() && !lines.is_empty() {
+            break;
+        }
+        
+        // Don't add empty lines at the start
+        if trimmed.is_empty() && lines.is_empty() {
+            continue;
+        }
+        
+        lines.push(line);
+        line_count += 1;
+        
+        // Show continuation prompt for multi-line
+        if line_count > 1 {
+            print!("  ... ");
+            std::io::stdout().flush()?;
+        }
+    }
+
+    Ok(lines.join("").trim().to_string())
 }
 
 async fn handle_connect_command(

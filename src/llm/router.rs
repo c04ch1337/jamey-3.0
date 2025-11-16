@@ -141,7 +141,7 @@ impl ModelRouter {
         }
 
         if weight_sum > 0.0 {
-            score / weight_sum
+            (score / weight_sum).into()
         } else {
             // If no specific requirements, give neutral score
             0.5

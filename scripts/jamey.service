@@ -1,0 +1,35 @@
+[Unit]
+Description=Jamey 3.0 - General & Guardian (Main Service)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jamey
+Group=jamey
+WorkingDirectory=/opt/jamey
+ExecStart=/usr/local/bin/jamey-3
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jamey
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/jamey/data
+PrivateTmp=yes
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment
+Environment="RUST_LOG=info"
+EnvironmentFile=-/etc/jamey/jamey.env
+
+[Install]
+WantedBy=multi-user.target
+

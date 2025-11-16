@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Daily cost tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
